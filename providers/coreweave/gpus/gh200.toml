@@ -1,0 +1,20 @@
+# Source: https://www.coreweave.com/pricing (captured 2026-07).
+# Single-GPU Grace Hopper superchip node; on-demand only (no spot in either region).
+base_gpu = "nvidia/gh200"
+instance = "GH200"
+gpus_per_instance = 1
+vcpus = 72
+memory_gb = 480
+local_storage_gb = 7_680
+fabric = "NVLink-C2C + InfiniBand"
+
+[cost]
+hourly = 6.50
+
+[[availability]]
+region = "us"
+provider_region = "US"
+
+[[availability]]
+region = "eu"
+provider_region = "EU"

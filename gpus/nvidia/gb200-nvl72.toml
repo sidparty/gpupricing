@@ -1,0 +1,19 @@
+name = "NVIDIA GB200 NVL72"
+description = "Grace Blackwell rack-scale system; each Blackwell GPU carries 192 GB HBM3e in a 72-GPU NVLink domain."
+architecture = "Blackwell"
+vram_gb = 192
+memory_type = "HBM3e"
+memory_bandwidth_gbs = 8000
+tdp_watts = 1200
+interconnect = "NVLink 5"
+release_date = "2024-03"
+last_updated = "2026-07"
+
+# Per single Blackwell GPU within the rack (dense).
+[compute]
+tf32 = 1250
+fp16 = 2500
+bf16 = 2500
+fp8 = 5000
+int8 = 5000
+fp4 = 10000

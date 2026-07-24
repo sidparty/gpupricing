@@ -2,40 +2,37 @@
 /** @jsxImportSource hono/jsx */
 
 import { generateCatalog } from "@models.dev/core";
-import type { Model, ModelMetadata, Provider } from "@models.dev/core";
+import type { GpuMetadata, GpuOffering, Provider, Region } from "@models.dev/core";
 import { Fragment } from "hono/jsx";
 import { renderToString } from "hono/jsx/dom/server";
-import { existsSync, readFileSync, readdirSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import path from "path";
 import {
-  booleanText,
-  capabilitySummary,
-  costSummary,
+  DASH,
   escapeHtml,
+  formatHourly,
   formatNumber,
-  knowledgeText,
-  renderModalityIcon,
-  renderModalities,
+  formatPerGpu,
+  formatStorage,
+  formatTflops,
+  formatVram,
+  formatWatts,
   sortDate,
   sortNumber,
-  weightsText,
+  titleCase,
 } from "./shared.js";
 
 const root = path.join(import.meta.dir, "..", "..", "..");
 const Catalog = await generateCatalog(root);
 
-export const Models = Catalog.models;
+export const Gpus = Catalog.gpus;
 export const Providers = Catalog.providers;
+export const Regions = Catalog.regions;
 
-const BaseModelRefs = await loadProviderBaseModelRefs(root);
-const LabMetadata = loadLabMetadata(root);
+const BaseGpuRefs = await loadProviderBaseGpuRefs(root);
 const ProviderLogoSvgs = new Map<string, string>();
-const LabLogoSvgs = new Map<string, string>();
 
-type CatalogModel = ModelMetadata;
-type CatalogProvider = Provider;
-type CatalogProviderModel = Model;
-type ActiveSection = "models" | "providers" | "labs";
+type ActiveSection = "gpus" | "providers" | "regions";
 
 interface PageMetadata {
   title: string;
@@ -47,83 +44,91 @@ interface RenderedPage {
   metadata: PageMetadata;
 }
 
-interface ProviderModelEntry {
+interface Pricing {
+  hourly?: number;
+  perGpuHour?: number;
+  spotHourly?: number;
+  spotPerGpuHour?: number;
+}
+
+interface OfferingEntry {
   providerId: string;
-  provider: CatalogProvider;
-  modelId: string;
-  model: CatalogProviderModel;
-  canonicalModelId?: string;
-  canonical?: ModelEntry;
+  provider: Provider;
+  offeringId: string;
+  offering: GpuOffering;
+  canonicalGpuId?: string;
+  canonical?: GpuEntry;
+  pricing: Pricing;
+  regionSlugs: string[];
 }
 
-interface ModelEntry {
+interface GpuEntry {
   id: string;
-  metadata: CatalogModel;
-  labId: string;
-  labName: string;
-  providers: ProviderModelEntry[];
-  minInputCost?: number;
-  minOutputCost?: number;
-}
-
-interface LabEntry {
-  id: string;
-  name: string;
-  description?: string;
-  models: ModelEntry[];
+  metadata: GpuMetadata;
+  manufacturerId: string;
+  manufacturerName: string;
+  offerings: OfferingEntry[];
   providerCount: number;
-  families: string[];
-  lastReleased?: string;
-  lastUpdated?: string;
+  regionCount: number;
+  minPricePerGpuHour?: number;
+  minSpotPerGpuHour?: number;
+}
+
+interface RegionEntry {
+  id: string;
+  region: Region;
+  offerings: OfferingEntry[];
+  providerCount: number;
+  gpuCount: number;
+  minPricePerGpuHour?: number;
 }
 
 interface SearchIndexItem {
-  type: "model" | "provider" | "lab";
+  type: "gpu" | "provider" | "region";
   title: string;
   id: string;
   href: string;
   logo: string;
   tokens: string[];
-  lab?: string;
-  modelCount?: number;
+  manufacturer?: string;
+  providerType?: string;
+  vramGb?: number;
   providerCount?: number;
-  context?: number;
-  releaseDate?: string;
-  inputCost?: number;
-  outputCost?: number;
-  description?: string;
-  npm?: string;
-  api?: string;
+  regionCount?: number;
+  gpuCount?: number;
+  offeringCount?: number;
+  minPricePerGpuHour?: number;
+  location?: string;
   updated?: string;
+  description?: string;
 }
 
-const LAB_NAME_OVERRIDES: Record<string, string> = {
-  alibaba: "Alibaba",
-  meta: "Meta",
-  minimax: "MiniMax",
-  moonshotai: "Moonshot AI",
-  openai: "OpenAI",
-  perplexity: "Perplexity",
-  stepfun: "StepFun",
-  xai: "xAI",
-  zhipuai: "Zhipu AI",
+const MANUFACTURER_NAMES: Record<string, string> = {
+  nvidia: "NVIDIA",
+  amd: "AMD",
+  intel: "Intel",
 };
+
+const PROVIDER_TYPE_LABELS: Record<string, string> = {
+  cloud: "Cloud",
+  neocloud: "Neocloud",
+  marketplace: "Marketplace",
+};
+
+const SITE_NAME = "GPU Prices";
+const SITE_TAGLINE = "An open database of on-demand GPU cloud pricing";
 
 const DEFAULT_PAGE_METADATA: PageMetadata = {
-  title: "Models.dev - An open-source database of AI models",
+  title: `${SITE_NAME} - On-demand GPU cloud pricing`,
   description:
-    "Models.dev is a comprehensive open-source database of AI model specifications, pricing, and features.",
+    "An open database of on-demand GPU instance pricing, specs, and availability across cloud providers.",
 };
 
-const ModelEntries = buildModelEntries();
-const ProviderModelEntries = buildProviderModelEntries(ModelEntries);
-connectProviderEntries(ModelEntries, ProviderModelEntries);
-const LabEntries = buildLabEntries(ModelEntries);
-const SearchItems = buildSearchItems(
-  sortModels([...ModelEntries.values()]),
-  Object.entries(Providers).sort(([, a], [, b]) => a.name.localeCompare(b.name)),
-  LabEntries,
-);
+const GpuEntries = buildGpuEntries();
+const OfferingEntries = buildOfferingEntries();
+connectOfferings(GpuEntries, OfferingEntries);
+const RegionEntries = buildRegionEntries();
+const SearchItems = buildSearchItems();
 
 export const RenderedPages = buildPages();
 export const Rendered = RenderedPages.get("/")!.html;
@@ -146,205 +151,238 @@ export function renderDocument(template: string, page: RenderedPage) {
     .replace("<!--static-->", page.html);
 }
 
-async function loadProviderBaseModelRefs(root: string) {
+/////////////////////////
+// Data assembly
+/////////////////////////
+
+async function loadProviderBaseGpuRefs(root: string) {
   const refs = new Map<string, string>();
   const providersDirectory = path.join(root, "providers");
   if (!existsSync(providersDirectory)) return refs;
 
-  for await (const modelPath of new Bun.Glob("*/models/**/*.toml").scan({
+  for await (const offeringPath of new Bun.Glob("*/gpus/**/*.toml").scan({
     cwd: providersDirectory,
     absolute: true,
     followSymlinks: true,
   })) {
-    const parts = path.relative(providersDirectory, modelPath).split(path.sep);
-    const [providerId, modelsSegment, ...modelParts] = parts;
-    if (!providerId || modelsSegment !== "models" || modelParts.length === 0) {
+    const parts = path.relative(providersDirectory, offeringPath).split(path.sep);
+    const [providerId, gpusSegment, ...offeringParts] = parts;
+    if (!providerId || gpusSegment !== "gpus" || offeringParts.length === 0) {
       continue;
     }
 
-    const modelId = modelParts.join("/").slice(0, -5);
-    const toml = await import(modelPath, {
+    const offeringId = offeringParts.join("/").slice(0, -5);
+    const toml = await import(offeringPath, {
       with: {
         type: "toml",
       },
-    }).then((mod) => mod.default as { base_model?: unknown });
+    }).then((mod) => mod.default as { base_gpu?: unknown });
 
-    if (typeof toml.base_model === "string") {
-      refs.set(`${providerId}/${modelId}`, toml.base_model);
+    if (typeof toml.base_gpu === "string") {
+      refs.set(`${providerId}/${offeringId}`, toml.base_gpu);
     }
   }
 
   return refs;
 }
 
-function buildModelEntries() {
-  const entries = new Map<string, ModelEntry>();
+function buildGpuEntries() {
+  const entries = new Map<string, GpuEntry>();
 
-  for (const [id, metadata] of Object.entries(Models)) {
-    const labId = id.split("/")[0]!;
+  for (const [id, metadata] of Object.entries(Gpus)) {
+    const manufacturerId = id.split("/")[0]!;
     entries.set(id, {
       id,
       metadata,
-      labId,
-      labName: labName(labId),
-      providers: [],
+      manufacturerId,
+      manufacturerName: manufacturerName(manufacturerId),
+      offerings: [],
+      providerCount: 0,
+      regionCount: 0,
     });
   }
 
   return entries;
 }
 
-function buildProviderModelEntries(models: Map<string, ModelEntry>) {
-  const entries: ProviderModelEntry[] = [];
+function resolvePricing(offering: GpuOffering, regionSlug?: string): Pricing {
+  const entry = regionSlug
+    ? offering.availability.find((a) => a.region === regionSlug)
+    : undefined;
+
+  const hourly =
+    entry?.hourly ??
+    offering.cost?.hourly ??
+    minDefined(offering.availability.map((a) => a.hourly));
+
+  const spotHourly = regionSlug
+    ? entry?.spot_hourly ?? offering.cost?.spot_hourly
+    : offering.cost?.spot_hourly ??
+      minDefined(offering.availability.map((a) => a.spot_hourly));
+
+  const count = offering.gpus_per_instance;
+  return {
+    hourly,
+    perGpuHour: hourly === undefined ? undefined : hourly / count,
+    spotHourly,
+    spotPerGpuHour: spotHourly === undefined ? undefined : spotHourly / count,
+  };
+}
+
+function buildOfferingEntries(): OfferingEntry[] {
+  const entries: OfferingEntry[] = [];
 
   for (const [providerId, provider] of Object.entries(Providers)) {
-    for (const [modelId, model] of Object.entries(provider.models)) {
-      if (model.status === "alpha") continue;
-
-      const canonicalModelId = resolveCanonicalModelId(
-        models,
-        providerId,
-        modelId,
-      );
-
+    for (const [offeringId, offering] of Object.entries(provider.gpus)) {
+      const canonicalGpuId = resolveCanonicalGpuId(providerId, offeringId);
       entries.push({
         providerId,
         provider,
-        modelId,
-        model,
-        canonicalModelId,
+        offeringId,
+        offering,
+        canonicalGpuId,
+        pricing: resolvePricing(offering),
+        regionSlugs: offering.availability.map((a) => a.region),
       });
     }
   }
 
-  return entries.sort((a, b) =>
-    a.provider.name.localeCompare(b.provider.name) ||
-    displayModelName(a).localeCompare(displayModelName(b)),
+  return entries.sort(
+    (a, b) =>
+      a.provider.name.localeCompare(b.provider.name) ||
+      a.offering.name.localeCompare(b.offering.name),
   );
 }
 
-function connectProviderEntries(
-  models: Map<string, ModelEntry>,
-  providers: ProviderModelEntry[],
+function connectOfferings(
+  gpus: Map<string, GpuEntry>,
+  offerings: OfferingEntry[],
 ) {
-  for (const entry of providers) {
-    if (!entry.canonicalModelId) continue;
-
-    const canonical = models.get(entry.canonicalModelId);
+  for (const entry of offerings) {
+    if (!entry.canonicalGpuId) continue;
+    const canonical = gpus.get(entry.canonicalGpuId);
     if (!canonical) continue;
-
     entry.canonical = canonical;
-    canonical.providers.push(entry);
+    canonical.offerings.push(entry);
   }
 
-  for (const model of models.values()) {
-    model.providers.sort((a, b) => a.provider.name.localeCompare(b.provider.name));
-    model.minInputCost = minDefined(
-      model.providers.map((provider) => provider.model.cost?.input),
+  for (const gpu of gpus.values()) {
+    const providers = new Set<string>();
+    const regions = new Set<string>();
+    for (const offering of gpu.offerings) {
+      providers.add(offering.providerId);
+      for (const slug of offering.regionSlugs) regions.add(slug);
+    }
+    gpu.providerCount = providers.size;
+    gpu.regionCount = regions.size;
+    gpu.minPricePerGpuHour = minDefined(
+      gpu.offerings.map((offering) => offering.pricing.perGpuHour),
     );
-    model.minOutputCost = minDefined(
-      model.providers.map((provider) => provider.model.cost?.output),
+    gpu.minSpotPerGpuHour = minDefined(
+      gpu.offerings.map((offering) => offering.pricing.spotPerGpuHour),
+    );
+    gpu.offerings.sort(
+      (a, b) =>
+        (a.pricing.perGpuHour ?? Infinity) - (b.pricing.perGpuHour ?? Infinity) ||
+        a.provider.name.localeCompare(b.provider.name),
     );
   }
 }
 
-function buildLabEntries(models: Map<string, ModelEntry>) {
-  const labs = new Map<string, ModelEntry[]>();
-
-  for (const model of models.values()) {
-    const existing = labs.get(model.labId) ?? [];
-    existing.push(model);
-    labs.set(model.labId, existing);
+function buildRegionEntries(): RegionEntry[] {
+  const buckets = new Map<string, OfferingEntry[]>();
+  for (const slug of Object.keys(Regions)) buckets.set(slug, []);
+  for (const offering of OfferingEntries) {
+    for (const slug of offering.regionSlugs) {
+      if (!buckets.has(slug)) buckets.set(slug, []);
+      buckets.get(slug)!.push(offering);
+    }
   }
 
-  return [...labs.entries()]
-    .map(([id, modelEntries]) => {
+  return Object.entries(Regions)
+    .map(([slug, region]) => {
+      const offerings = buckets.get(slug) ?? [];
       const providers = new Set<string>();
-      const families = new Set<string>();
-      let lastReleased: string | undefined;
-      let lastUpdated: string | undefined;
+      const gpuIds = new Set<string>();
+      let minPricePerGpuHour: number | undefined;
 
-      for (const model of modelEntries) {
-        for (const provider of model.providers) providers.add(provider.providerId);
-        if (model.metadata.family) families.add(model.metadata.family);
-        if (
-          model.metadata.release_date &&
-          (!lastReleased || model.metadata.release_date > lastReleased)
-        ) {
-          lastReleased = model.metadata.release_date;
-        }
-        if (
-          model.metadata.last_updated &&
-          (!lastUpdated || model.metadata.last_updated > lastUpdated)
-        ) {
-          lastUpdated = model.metadata.last_updated;
+      for (const offering of offerings) {
+        providers.add(offering.providerId);
+        if (offering.canonicalGpuId) gpuIds.add(offering.canonicalGpuId);
+        const perGpu = resolvePricing(offering.offering, slug).perGpuHour;
+        if (perGpu !== undefined) {
+          minPricePerGpuHour =
+            minPricePerGpuHour === undefined
+              ? perGpu
+              : Math.min(minPricePerGpuHour, perGpu);
         }
       }
 
       return {
-        id,
-        name: labName(id),
-        description: LabMetadata.get(id)?.description,
-        models: sortModels(modelEntries),
+        id: slug,
+        region,
+        offerings,
         providerCount: providers.size,
-        families: [...families].sort(),
-        lastReleased,
-        lastUpdated,
+        gpuCount: gpuIds.size,
+        minPricePerGpuHour,
       };
     })
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => a.region.name.localeCompare(b.region.name));
 }
 
-function buildSearchItems(
-  models: ModelEntry[],
-  providers: Array<[string, CatalogProvider]>,
-  labs: LabEntry[],
-): SearchIndexItem[] {
+function resolveCanonicalGpuId(providerId: string, offeringId: string) {
+  const baseGpuId = BaseGpuRefs.get(`${providerId}/${offeringId}`);
+  if (baseGpuId && Gpus[baseGpuId]) return baseGpuId;
+  if (Gpus[offeringId]) return offeringId;
+}
+
+function buildSearchItems(): SearchIndexItem[] {
   const items: SearchIndexItem[] = [];
 
-  for (const model of models) {
-    const metadata = model.metadata;
+  for (const gpu of sortGpus([...GpuEntries.values()])) {
+    const metadata = gpu.metadata;
     items.push({
-      type: "model",
+      type: "gpu",
       title: metadata.name,
-      id: model.id,
-      href: modelHref(model.id),
-      logo: labLogoHref(model.labId),
-      lab: model.labName,
-      providerCount: model.providers.length,
-      context: metadata.limit?.context,
-      releaseDate: metadata.release_date,
-      inputCost: model.minInputCost,
-      outputCost: model.minOutputCost,
+      id: gpu.id,
+      href: gpuHref(gpu.id),
+      logo: defaultLogoHref(),
+      manufacturer: gpu.manufacturerName,
+      vramGb: metadata.vram_gb,
+      providerCount: gpu.providerCount,
+      regionCount: gpu.regionCount,
+      minPricePerGpuHour: gpu.minPricePerGpuHour,
       description: metadata.description,
       updated: metadata.last_updated,
       tokens: [
         metadata.name,
+        gpu.id,
+        gpu.manufacturerName,
+        metadata.architecture,
+        metadata.memory_type,
+        metadata.interconnect,
         metadata.description,
-        model.id,
-        model.labName,
-        model.labId,
-        metadata.family,
-        metadata.release_date,
-        metadata.last_updated,
-        ...model.providers.flatMap((provider) => [
-          displayModelName(provider),
-          provider.modelId,
-          provider.provider.name,
-          provider.providerId,
+        ...gpu.offerings.flatMap((offering) => [
+          offering.offering.instance,
+          offering.provider.name,
+          offering.providerId,
         ]),
-        ...(metadata.modalities?.input ?? []),
-        ...(metadata.modalities?.output ?? []),
       ].filter((token): token is string => Boolean(token)),
     });
   }
 
-  for (const [providerId, provider] of providers) {
-    const providerModels = ProviderModelEntries.filter(
+  for (const [providerId, provider] of sortedProviders()) {
+    const offerings = OfferingEntries.filter(
       (entry) => entry.providerId === providerId,
     );
-    const providerLastReleased = maxModelDate(providerModels, "release_date");
-    const providerLastUpdated = maxModelDate(providerModels, "last_updated");
+    const regions = new Set<string>();
+    let minPrice: number | undefined;
+    let updated: string | undefined;
+    for (const offering of offerings) {
+      for (const slug of offering.regionSlugs) regions.add(slug);
+      minPrice = minValue(minPrice, offering.pricing.perGpuHour);
+      updated = maxDate(updated, offering.offering.last_updated);
+    }
 
     items.push({
       type: "provider",
@@ -352,40 +390,41 @@ function buildSearchItems(
       id: providerId,
       href: providerHref(providerId),
       logo: logoHref(providerId),
-      modelCount: providerModels.length,
-      npm: provider.npm,
-      api: provider.api,
-      releaseDate: providerLastReleased,
-      updated: providerLastUpdated,
+      providerType: providerTypeLabel(provider.type),
+      offeringCount: offerings.length,
+      regionCount: regions.size,
+      minPricePerGpuHour: minPrice,
+      updated,
       tokens: [
         provider.name,
         providerId,
-        provider.npm,
-        provider.api,
+        providerTypeLabel(provider.type),
         provider.doc,
+        ...offerings.map((offering) => offering.offering.name),
+        ...offerings.map((offering) => offering.offering.instance),
       ].filter((token): token is string => Boolean(token)),
     });
   }
 
-  for (const lab of labs) {
+  for (const region of RegionEntries) {
     items.push({
-      type: "lab",
-      title: lab.name,
-      id: lab.id,
-      href: labHref(lab.id),
-      logo: labLogoHref(lab.id),
-      modelCount: lab.models.length,
-      providerCount: lab.providerCount,
-      releaseDate: lab.lastReleased,
-      description: lab.description,
-      updated: lab.lastUpdated,
+      type: "region",
+      title: region.region.name,
+      id: region.id,
+      href: regionHref(region.id),
+      logo: defaultLogoHref(),
+      location: region.region.location,
+      providerCount: region.providerCount,
+      gpuCount: region.gpuCount,
+      minPricePerGpuHour: region.minPricePerGpuHour,
       tokens: [
-        lab.name,
-        lab.description,
-        lab.id,
-        lab.lastUpdated,
-        ...lab.families,
-        ...lab.models.slice(0, 20).map((model) => model.metadata.name),
+        region.region.name,
+        region.id,
+        region.region.location,
+        ...region.offerings.flatMap((offering) => [
+          offering.offering.instance,
+          offering.provider.name,
+        ]),
       ].filter((token): token is string => Boolean(token)),
     });
   }
@@ -393,66 +432,61 @@ function buildSearchItems(
   return items;
 }
 
-function resolveCanonicalModelId(
-  models: Map<string, ModelEntry>,
-  providerId: string,
-  modelId: string,
-) {
-  const baseModelId = BaseModelRefs.get(`${providerId}/${modelId}`);
-  if (baseModelId && models.has(baseModelId)) return baseModelId;
-  if (models.has(modelId)) return modelId;
-
-  const providerScopedId = `${providerId}/${modelId}`;
-  if (models.has(providerScopedId)) return providerScopedId;
-}
+/////////////////////////
+// Pages
+/////////////////////////
 
 function buildPages() {
   const pages = new Map<string, RenderedPage>();
-  const modelList = sortModels([...ModelEntries.values()]);
-  const providerList = Object.entries(Providers).sort(([, a], [, b]) =>
-    a.name.localeCompare(b.name),
-  );
+  const gpuList = sortGpus([...GpuEntries.values()]);
+  const providerList = sortedProviders();
 
   const addPage = (route: string, page: RenderedPage) => {
     pages.set(normalizeRoute(route), page);
   };
 
-  const home = renderPage(
-    "models",
-    <HomePage models={modelList} providers={providerList} labs={LabEntries} />,
-  );
-
+  const home = renderPage("gpus", <GpusPage gpus={gpuList} />);
   addPage("/", home);
-  addPage("/models", home);
+  addPage("/gpus", home);
   addPage(
     "/providers",
     renderPage("providers", <ProvidersPage providers={providerList} />),
   );
-  addPage("/labs", renderPage("labs", <LabsPage labs={LabEntries} />));
+  addPage(
+    "/regions",
+    renderPage("regions", <RegionsPage regions={RegionEntries} />),
+  );
 
-  for (const model of modelList) {
+  for (const gpu of gpuList) {
     addPage(
-      modelHref(model.id),
-      renderPage("models", <ModelPage model={model} />, modelPageMetadata(model)),
+      gpuHref(gpu.id),
+      renderPage("gpus", <GpuPage gpu={gpu} />, gpuPageMetadata(gpu)),
     );
   }
 
   for (const [providerId, provider] of providerList) {
-    const models = ProviderModelEntries.filter(
+    const offerings = OfferingEntries.filter(
       (entry) => entry.providerId === providerId,
     );
     addPage(
       providerHref(providerId),
       renderPage(
         "providers",
-        <ProviderPage providerId={providerId} provider={provider} models={models} />,
-        providerPageMetadata(providerId, provider, models),
+        <ProviderPage
+          providerId={providerId}
+          provider={provider}
+          offerings={offerings}
+        />,
+        providerPageMetadata(providerId, provider, offerings),
       ),
     );
   }
 
-  for (const lab of LabEntries) {
-    addPage(labHref(lab.id), renderPage("labs", <LabPage lab={lab} />, labPageMetadata(lab)));
+  for (const region of RegionEntries) {
+    addPage(
+      regionHref(region.id),
+      renderPage("regions", <RegionPage region={region} />, regionPageMetadata(region)),
+    );
   }
 
   return pages;
@@ -477,156 +511,564 @@ function renderPage(
   };
 }
 
-function modelPageMetadata(model: ModelEntry): PageMetadata {
-  const metadata = model.metadata;
-  const providerCount = model.providers.length;
-  const title = `${metadata.name} pricing, providers, and specs | Models.dev`;
-  const context = metadata.limit?.context
-    ? `${formatNumber(metadata.limit.context)} token context`
-    : undefined;
-  const output = metadata.limit?.output
-    ? `${formatNumber(metadata.limit.output)} token output`
-    : undefined;
-  const cost =
-    model.minInputCost !== undefined || model.minOutputCost !== undefined
-      ? `${costSummary(model.minInputCost, model.minOutputCost)} per 1M tokens`
-      : undefined;
-  const capabilities = capabilitySummary([
-    ["tool calling", metadata.tool_call],
-    ["reasoning", metadata.reasoning],
-    ["structured output", metadata.structured_output],
-    ["temperature control", metadata.temperature],
-  ]);
-  const modalities = modalitySummary(metadata.modalities?.input, metadata.modalities?.output);
-  const description = compactMetadataDescription(
+function gpuPageMetadata(gpu: GpuEntry): PageMetadata {
+  const metadata = gpu.metadata;
+  const title = `${metadata.name} cloud pricing and specs | ${SITE_NAME}`;
+  const facts = [
+    `${formatVram(metadata.vram_gb)} ${metadata.memory_type ?? "VRAM"}`.trim(),
+    metadata.architecture ? `${metadata.architecture} architecture` : undefined,
+    gpu.minPricePerGpuHour !== undefined
+      ? `from ${formatPerGpu(gpu.minPricePerGpuHour)}/GPU/hr`
+      : undefined,
+  ].filter(Boolean);
+  const description = compact(
     [
       metadata.description,
-      `Compare ${metadata.name} from ${model.labName} across ${plural(providerCount, "provider")}.`,
-      factSentence(
-        [context, output, cost, modalities, capabilities !== "-" ? capabilities : undefined],
-        "Specs include",
-      ),
+      `Compare on-demand ${metadata.name} pricing across ${plural(gpu.providerCount, "provider")} and ${plural(gpu.regionCount, "region")}.`,
+      facts.length ? `Specs: ${facts.join(", ")}.` : undefined,
     ],
     280,
   );
-
   return { title, description };
 }
 
 function providerPageMetadata(
   providerId: string,
-  provider: CatalogProvider,
-  models: ProviderModelEntry[],
+  provider: Provider,
+  offerings: OfferingEntry[],
 ): PageMetadata {
-  const title = `${provider.name} models, pricing, and API docs | Models.dev`;
-  const labs = new Set<string>();
-  for (const entry of models) {
-    if (entry.canonical?.labName) labs.add(entry.canonical.labName);
-  }
-  const labNames = [...labs];
-  const labSummary =
-    labNames.length > 1
-      ? `models from labs like ${labNames.slice(0, 3).join(", ")}`
-      : labNames.length === 1 && labNames[0] !== provider.name
-        ? `models from ${labNames[0]}`
-        : undefined;
-  const description = compactMetadataDescription(
+  const title = `${provider.name} GPU pricing and instances | ${SITE_NAME}`;
+  const description = compact(
     [
-      `Browse ${plural(models.length, `${provider.name} model`)} on Models.dev.`,
-      factSentence([
-        labSummary,
-        `pricing`,
-        `context windows`,
-        `capabilities`,
-        `SDK package ${provider.npm}`,
-        provider.api ? `API endpoint and docs` : `provider docs`,
-      ]),
+      `Browse ${plural(offerings.length, `${provider.name} GPU instance`)} with on-demand and spot hourly pricing.`,
+      `${provider.name} is a ${providerTypeLabel(provider.type).toLowerCase()} GPU provider.`,
       `Provider ID: ${providerId}.`,
     ],
     280,
   );
-
   return { title, description };
 }
 
-function labPageMetadata(lab: LabEntry): PageMetadata {
-  const title = `${lab.name} models, providers, and specs | Models.dev`;
-  const description = compactMetadataDescription(
+function regionPageMetadata(region: RegionEntry): PageMetadata {
+  const title = `GPU pricing in ${region.region.name} | ${SITE_NAME}`;
+  const description = compact(
     [
-      lab.description,
-      `Browse ${plural(lab.models.length, "model")} from ${lab.name} across ${plural(lab.providerCount, "provider")}.`,
-      factSentence([
-        lab.families.length > 0 ? `families like ${lab.families.slice(0, 4).join(", ")}` : undefined,
-        lab.lastUpdated ? `updated ${lab.lastUpdated}` : undefined,
-        `pricing`,
-        `context windows`,
-        `capabilities`,
-      ]),
+      `On-demand GPU instances available in ${region.region.name} (${region.region.location}).`,
+      `${plural(region.providerCount, "provider")}, ${plural(region.gpuCount, "GPU model")}${
+        region.minPricePerGpuHour !== undefined
+          ? `, from ${formatPerGpu(region.minPricePerGpuHour)}/GPU/hr`
+          : ""
+      }.`,
     ],
     280,
   );
-
   return { title, description };
 }
 
-function compactMetadataDescription(parts: Array<string | undefined>, maxLength: number) {
-  const compacted = parts
-    .map((part) => part?.trim())
-    .filter((part): part is string => Boolean(part))
-    .map(ensureSentence)
-    .join(" ");
+function GpusPage(props: { gpus: GpuEntry[] }) {
+  return <GpuTable gpus={props.gpus} title="GPUs" hideHeading />;
+}
 
-  if (compacted.length <= maxLength) return compacted;
-
-  const shortened = compacted.slice(0, maxLength - 1);
-  const lastBreak = Math.max(
-    shortened.lastIndexOf("."),
-    shortened.lastIndexOf(";"),
-    shortened.lastIndexOf(","),
+function GpuTable(props: {
+  gpus: GpuEntry[];
+  title: string;
+  hideHeading?: boolean;
+}) {
+  const columns = 11;
+  return (
+    <TableSection
+      title={props.title}
+      count={props.gpus.length}
+      columns={columns}
+      hideHeading={props.hideHeading}
+    >
+      <table data-enhanced-table>
+        <thead>
+          <tr>
+            <SortableTh>GPU</SortableTh>
+            <SortableTh>Manufacturer</SortableTh>
+            <SortableTh>Architecture</SortableTh>
+            <SortableTh type="number">VRAM</SortableTh>
+            <SortableTh>Memory</SortableTh>
+            <SortableTh type="number">FP16 TFLOPS</SortableTh>
+            <SortableTh>Interconnect</SortableTh>
+            <SortableTh type="number">Providers</SortableTh>
+            <SortableTh type="number">Regions</SortableTh>
+            <SortableTh type="number">Best $/GPU/hr</SortableTh>
+            <SortableTh>Released</SortableTh>
+          </tr>
+        </thead>
+        <tbody>
+          {props.gpus.map((gpu) => {
+            const metadata = gpu.metadata;
+            const fp16 = metadata.compute?.fp16 ?? metadata.compute?.bf16;
+            return (
+              <tr
+                data-search={`${metadata.name} ${gpu.id} ${gpu.manufacturerName} ${metadata.architecture ?? ""} ${metadata.memory_type ?? ""} ${metadata.interconnect ?? ""}`}
+              >
+                <td data-sort={metadata.name}>
+                  <a class="primary-link" href={gpuHref(gpu.id)}>
+                    {metadata.name}
+                  </a>
+                  <span class="subtle mono">{gpu.id}</span>
+                </td>
+                <td data-sort={gpu.manufacturerName}>{gpu.manufacturerName}</td>
+                <td data-sort={metadata.architecture ?? ""}>
+                  {metadata.architecture ?? DASH}
+                </td>
+                <td data-sort={sortNumber(metadata.vram_gb)}>
+                  {formatVram(metadata.vram_gb)}
+                </td>
+                <td data-sort={metadata.memory_type ?? ""}>
+                  {metadata.memory_type ?? DASH}
+                </td>
+                <td data-sort={sortNumber(fp16)}>{formatTflops(fp16)}</td>
+                <td data-sort={metadata.interconnect ?? ""}>
+                  {metadata.interconnect ?? DASH}
+                </td>
+                <td data-sort={String(gpu.providerCount)}>
+                  <a href={`${gpuHref(gpu.id)}#offerings`}>{gpu.providerCount}</a>
+                </td>
+                <td data-sort={String(gpu.regionCount)}>{gpu.regionCount}</td>
+                <td data-sort={sortNumber(gpu.minPricePerGpuHour)}>
+                  {formatPerGpu(gpu.minPricePerGpuHour)}
+                </td>
+                <td data-sort={sortDate(metadata.release_date)}>
+                  {metadata.release_date ?? DASH}
+                </td>
+              </tr>
+            );
+          })}
+          <EmptyRow columns={columns} />
+        </tbody>
+      </table>
+    </TableSection>
   );
-  const trimmed = (lastBreak > maxLength * 0.6 ? shortened.slice(0, lastBreak) : shortened).trim();
-  return `${trimmed.replace(/[.,;:]$/, "")}.`;
 }
 
-function ensureSentence(value: string) {
-  return /[.!?]$/.test(value) ? value : `${value}.`;
+function ProvidersPage(props: { providers: Array<[string, Provider]> }) {
+  return (
+    <TableSection
+      title="Providers"
+      count={props.providers.length}
+      columns={6}
+      hideHeading
+    >
+      <table data-enhanced-table>
+        <thead>
+          <tr>
+            <SortableTh>Provider</SortableTh>
+            <SortableTh>Type</SortableTh>
+            <SortableTh type="number">GPU instances</SortableTh>
+            <SortableTh type="number">Regions</SortableTh>
+            <SortableTh type="number">Min $/GPU/hr</SortableTh>
+            <SortableTh>Docs</SortableTh>
+          </tr>
+        </thead>
+        <tbody>
+          {props.providers.map(([providerId, provider]) => {
+            const offerings = OfferingEntries.filter(
+              (entry) => entry.providerId === providerId,
+            );
+            const regions = new Set<string>();
+            let minPrice: number | undefined;
+            for (const offering of offerings) {
+              for (const slug of offering.regionSlugs) regions.add(slug);
+              minPrice = minValue(minPrice, offering.pricing.perGpuHour);
+            }
+
+            return (
+              <tr
+                data-search={`${provider.name} ${providerId} ${providerTypeLabel(provider.type)}`}
+              >
+                <td data-sort={provider.name}>
+                  <ProviderLink providerId={providerId} provider={provider} />
+                </td>
+                <td data-sort={providerTypeLabel(provider.type)}>
+                  {providerTypeLabel(provider.type)}
+                </td>
+                <td data-sort={String(offerings.length)}>{offerings.length}</td>
+                <td data-sort={String(regions.size)}>{regions.size}</td>
+                <td data-sort={sortNumber(minPrice)}>{formatPerGpu(minPrice)}</td>
+                <td>
+                  <a href={provider.doc} target="_blank" rel="noopener noreferrer">
+                    Docs
+                  </a>
+                </td>
+              </tr>
+            );
+          })}
+          <EmptyRow columns={6} />
+        </tbody>
+      </table>
+    </TableSection>
+  );
 }
 
-function sentenceList(values: Array<string | undefined>) {
-  const parts = values.filter((value): value is string => Boolean(value));
-  if (parts.length === 0) return undefined;
-  return parts.join("; ");
+function RegionsPage(props: { regions: RegionEntry[] }) {
+  return (
+    <TableSection
+      title="Regions"
+      count={props.regions.length}
+      columns={5}
+      hideHeading
+    >
+      <table data-enhanced-table>
+        <thead>
+          <tr>
+            <SortableTh>Region</SortableTh>
+            <SortableTh>Location</SortableTh>
+            <SortableTh type="number">Providers</SortableTh>
+            <SortableTh type="number">GPU models</SortableTh>
+            <SortableTh type="number">Min $/GPU/hr</SortableTh>
+          </tr>
+        </thead>
+        <tbody>
+          {props.regions.map((region) => (
+            <tr
+              data-search={`${region.region.name} ${region.id} ${region.region.location}`}
+            >
+              <td data-sort={region.region.name}>
+                <a class="primary-link" href={regionHref(region.id)}>
+                  {region.region.name}
+                </a>
+                <span class="subtle mono">{region.id}</span>
+              </td>
+              <td>{region.region.location}</td>
+              <td data-sort={String(region.providerCount)}>
+                {region.providerCount}
+              </td>
+              <td data-sort={String(region.gpuCount)}>{region.gpuCount}</td>
+              <td data-sort={sortNumber(region.minPricePerGpuHour)}>
+                {formatPerGpu(region.minPricePerGpuHour)}
+              </td>
+            </tr>
+          ))}
+          <EmptyRow columns={5} />
+        </tbody>
+      </table>
+    </TableSection>
+  );
 }
 
-function factSentence(values: Array<string | undefined>, prefix = "Includes") {
-  const list = sentenceList(values);
-  return list ? `${prefix} ${list}` : undefined;
+function GpuPage(props: { gpu: GpuEntry }) {
+  const { gpu } = props;
+  const metadata = gpu.metadata;
+  const compute = metadata.compute;
+
+  return (
+    <Fragment>
+      <DetailHeader
+        eyebrow={
+          <Fragment>
+            <a href="/gpus">GPUs</a>
+            <span>/</span>
+            <span>{gpu.manufacturerName}</span>
+          </Fragment>
+        }
+        title={metadata.name}
+        description={metadata.description}
+        code={gpu.id}
+        copyValue={gpu.id}
+      />
+      <Facts
+        items={[
+          ["Manufacturer", gpu.manufacturerName],
+          ["Architecture", metadata.architecture ?? DASH],
+          ["VRAM", formatVram(metadata.vram_gb)],
+          ["Memory", metadata.memory_type ?? DASH],
+          [
+            "Bandwidth",
+            metadata.memory_bandwidth_gbs !== undefined
+              ? `${formatNumber(metadata.memory_bandwidth_gbs)} GB/s`
+              : DASH,
+          ],
+          ["TDP", formatWatts(metadata.tdp_watts)],
+          ["Interconnect", metadata.interconnect ?? DASH],
+          ["FP16", formatTflops(compute?.fp16)],
+          ["BF16", formatTflops(compute?.bf16)],
+          ["FP8", formatTflops(compute?.fp8)],
+          ["INT8 TOPS", formatTflops(compute?.int8)],
+          ["Providers", gpu.providerCount],
+          ["Regions", gpu.regionCount],
+          ["Best $/GPU/hr", formatPerGpu(gpu.minPricePerGpuHour)],
+          ["Released", metadata.release_date ?? DASH],
+        ]}
+      />
+      <TableSection
+        id="offerings"
+        title="Offerings"
+        count={gpu.offerings.reduce(
+          (total, entry) => total + entry.offering.availability.length,
+          0,
+        )}
+        columns={15}
+      >
+        <OfferingTable
+          offerings={gpu.offerings}
+          mode="by-provider"
+          splitByRegion
+        />
+      </TableSection>
+    </Fragment>
+  );
 }
 
-function modalitySummary(input?: string[], output?: string[]) {
-  const inputText = input && input.length > 0 ? `input: ${input.join(", ")}` : undefined;
-  const outputText = output && output.length > 0 ? `output: ${output.join(", ")}` : undefined;
-  return sentenceList([inputText, outputText]);
+function ProviderPage(props: {
+  providerId: string;
+  provider: Provider;
+  offerings: OfferingEntry[];
+}) {
+  const regions = new Set<string>();
+  let minPrice: number | undefined;
+  for (const offering of props.offerings) {
+    for (const slug of offering.regionSlugs) regions.add(slug);
+    minPrice = minValue(minPrice, offering.pricing.perGpuHour);
+  }
+
+  return (
+    <Fragment>
+      <DetailHeader
+        eyebrow={<a href="/providers">Providers</a>}
+        title={props.provider.name}
+        code={props.providerId}
+        copyValue={props.providerId}
+      />
+      <Facts
+        items={[
+          ["Type", providerTypeLabel(props.provider.type)],
+          ["GPU instances", props.offerings.length],
+          ["Regions", regions.size],
+          ["Min $/GPU/hr", formatPerGpu(minPrice)],
+          [
+            "API",
+            props.provider.api ? (
+              <span class="mono">{props.provider.api}</span>
+            ) : (
+              DASH
+            ),
+          ],
+          [
+            "Docs",
+            <a href={props.provider.doc} target="_blank" rel="noopener noreferrer">
+              Provider docs
+            </a>,
+          ],
+        ]}
+      />
+      <TableSection
+        title="Offerings"
+        count={props.offerings.length}
+        columns={15}
+      >
+        <OfferingTable offerings={props.offerings} mode="by-gpu" />
+      </TableSection>
+    </Fragment>
+  );
 }
 
-function plural(count: number, singular: string, pluralForm = `${singular}s`) {
-  return `${count} ${count === 1 ? singular : pluralForm}`;
+function RegionPage(props: { region: RegionEntry }) {
+  const { region } = props;
+  return (
+    <Fragment>
+      <DetailHeader
+        eyebrow={<a href="/regions">Regions</a>}
+        title={region.region.name}
+        description={region.region.location}
+        code={region.id}
+        copyValue={region.id}
+      />
+      <Facts
+        items={[
+          ["Location", region.region.location],
+          ["Providers", region.providerCount],
+          ["GPU models", region.gpuCount],
+          ["Instances", region.offerings.length],
+          ["Min $/GPU/hr", formatPerGpu(region.minPricePerGpuHour)],
+        ]}
+      />
+      <TableSection
+        title="Offerings"
+        count={region.offerings.length}
+        columns={15}
+      >
+        <OfferingTable
+          offerings={region.offerings}
+          mode="by-provider"
+          regionSlug={region.id}
+        />
+      </TableSection>
+    </Fragment>
+  );
 }
+
+type AvailabilityEntry = GpuOffering["availability"][number];
+
+function OfferingTable(props: {
+  offerings: OfferingEntry[];
+  mode: "by-provider" | "by-gpu";
+  regionSlug?: string;
+  splitByRegion?: boolean;
+}) {
+  const byProvider = props.mode === "by-provider";
+  const split = props.splitByRegion === true;
+  const columns = 15;
+
+  // In split mode each offering expands to one row per region it's available in.
+  const rows: Array<{ entry: OfferingEntry; availability?: AvailabilityEntry }> =
+    split
+      ? props.offerings.flatMap((entry) =>
+          entry.offering.availability.map((availability) => ({
+            entry,
+            availability,
+          })),
+        )
+      : props.offerings.map((entry) => ({ entry }));
+
+  return (
+    <table data-enhanced-table>
+      <thead>
+        <tr>
+          {byProvider ? (
+            <SortableTh>Provider</SortableTh>
+          ) : (
+            <SortableTh>GPU</SortableTh>
+          )}
+          <SortableTh>Instance</SortableTh>
+          {split && <SortableTh>Region</SortableTh>}
+          <SortableTh type="number">GPUs</SortableTh>
+          <SortableTh type="number">VRAM/GPU</SortableTh>
+          <SortableTh type="number">Total VRAM</SortableTh>
+          <SortableTh type="number">vCPUs</SortableTh>
+          <SortableTh type="number">RAM</SortableTh>
+          <SortableTh type="number">Storage</SortableTh>
+          <SortableTh>Interconnect</SortableTh>
+          <SortableTh>Fabric</SortableTh>
+          <SortableTh type="number">$/hr</SortableTh>
+          <SortableTh type="number">$/GPU/hr</SortableTh>
+          <SortableTh type="number">Spot $/hr</SortableTh>
+          <SortableTh type="number">Spot $/GPU/hr</SortableTh>
+          {!split && <SortableTh>Regions</SortableTh>}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(({ entry, availability }) => {
+          const offering = entry.offering;
+          const rowRegion = availability?.region ?? props.regionSlug;
+          const pricing = resolvePricing(offering, rowRegion);
+          const totalVram = offering.vram_gb * offering.gpus_per_instance;
+          const regionLabels = offering.availability
+            .map((a) => regionName(a.region))
+            .join(", ");
+          const regionTitle = offering.availability
+            .map((a) => a.provider_region ?? regionName(a.region))
+            .join(", ");
+          const rowRegionName = availability ? regionName(availability.region) : "";
+
+          return (
+            <tr
+              data-search={`${entry.provider.name} ${offering.name} ${offering.instance} ${offering.interconnect ?? ""} ${offering.fabric ?? ""} ${rowRegionName}`}
+            >
+              {byProvider ? (
+                <td data-sort={entry.provider.name}>
+                  <ProviderLink
+                    providerId={entry.providerId}
+                    provider={entry.provider}
+                  />
+                </td>
+              ) : (
+                <td data-sort={offering.name}>
+                  {entry.canonical ? (
+                    <a class="primary-link" href={gpuHref(entry.canonical.id)}>
+                      {offering.name}
+                    </a>
+                  ) : (
+                    <span>{offering.name}</span>
+                  )}
+                  {entry.canonicalGpuId && (
+                    <span class="subtle mono">{entry.canonicalGpuId}</span>
+                  )}
+                </td>
+              )}
+              <td data-sort={offering.instance}>
+                <span class="mono">{offering.instance}</span>
+              </td>
+              {split && availability && (
+                <td data-sort={rowRegionName}>
+                  <a href={regionHref(availability.region)}>{rowRegionName}</a>
+                  {availability.provider_region && (
+                    <span class="subtle mono">{availability.provider_region}</span>
+                  )}
+                </td>
+              )}
+              <td data-sort={sortNumber(offering.gpus_per_instance)}>
+                {offering.gpus_per_instance}
+              </td>
+              <td data-sort={sortNumber(offering.vram_gb)}>
+                {formatVram(offering.vram_gb)}
+              </td>
+              <td data-sort={sortNumber(totalVram)}>{formatVram(totalVram)}</td>
+              <td data-sort={sortNumber(offering.vcpus)}>
+                {formatNumber(offering.vcpus)}
+              </td>
+              <td data-sort={sortNumber(offering.memory_gb)}>
+                {offering.memory_gb === undefined
+                  ? DASH
+                  : `${formatNumber(offering.memory_gb)} GB`}
+              </td>
+              <td data-sort={sortNumber(offering.local_storage_gb)}>
+                {formatStorage(offering.local_storage_gb)}
+              </td>
+              <td data-sort={offering.interconnect ?? ""}>
+                {offering.interconnect ?? DASH}
+              </td>
+              <td data-sort={offering.fabric ?? ""}>{offering.fabric ?? DASH}</td>
+              <td data-sort={sortNumber(pricing.hourly)}>
+                {formatHourly(pricing.hourly)}
+              </td>
+              <td data-sort={sortNumber(pricing.perGpuHour)}>
+                {formatPerGpu(pricing.perGpuHour)}
+              </td>
+              <td data-sort={sortNumber(pricing.spotHourly)}>
+                {pricing.spotHourly === undefined
+                  ? DASH
+                  : formatHourly(pricing.spotHourly)}
+              </td>
+              <td data-sort={sortNumber(pricing.spotPerGpuHour)}>
+                {formatPerGpu(pricing.spotPerGpuHour)}
+              </td>
+              {!split && (
+                <td data-sort={regionLabels} title={regionTitle}>
+                  {regionLabels || DASH}
+                </td>
+              )}
+            </tr>
+          );
+        })}
+        <EmptyRow columns={columns} />
+      </tbody>
+    </table>
+  );
+}
+
+/////////////////////////
+// Shared components
+/////////////////////////
 
 function Header(props: { active: ActiveSection }) {
   return (
     <header>
       <div class="left">
         <a class="brand" href="/">
-          <h1>Models.dev</h1>
+          <h1>{SITE_NAME}</h1>
         </a>
         <span class="slash"></span>
-        <p>An open-source database of AI models</p>
+        <p>{SITE_TAGLINE}</p>
       </div>
       <div class="right">
         <nav class="top-nav" aria-label="Primary">
-          <a class={props.active === "models" ? "active" : ""} href="/models">
-            Models
+          <a class={props.active === "gpus" ? "active" : ""} href="/gpus">
+            GPUs
           </a>
           <a
             class={props.active === "providers" ? "active" : ""}
@@ -634,15 +1076,15 @@ function Header(props: { active: ActiveSection }) {
           >
             Providers
           </a>
-          <a class={props.active === "labs" ? "active" : ""} href="/labs">
-            Labs
+          <a class={props.active === "regions" ? "active" : ""} href="/regions">
+            Regions
           </a>
         </nav>
         <a
           class="github"
           target="_blank"
           rel="noopener noreferrer"
-          href="https://github.com/sst/models.dev"
+          href="https://github.com/anomalyco/models.dev"
           aria-label="GitHub"
         >
           <svg
@@ -717,233 +1159,6 @@ function Header(props: { active: ActiveSection }) {
   );
 }
 
-function HomePage(props: {
-  models: ModelEntry[];
-  providers: Array<[string, CatalogProvider]>;
-  labs: LabEntry[];
-}) {
-  return <ModelTable models={props.models} title="Canonical Models" hideHeading />;
-}
-
-function ProvidersPage(props: { providers: Array<[string, CatalogProvider]> }) {
-  return (
-      <TableSection
-        title="Providers"
-        count={props.providers.length}
-        columns={5}
-        hideHeading
-      >
-        <table data-enhanced-table>
-          <thead>
-            <tr>
-              <SortableTh>Provider</SortableTh>
-              <SortableTh type="number">Models</SortableTh>
-              <SortableTh>Package</SortableTh>
-              <SortableTh>API</SortableTh>
-              <SortableTh>Docs</SortableTh>
-            </tr>
-          </thead>
-          <tbody>
-            {props.providers.map(([providerId, provider]) => {
-              const models = ProviderModelEntries.filter(
-                (entry) => entry.providerId === providerId,
-              );
-
-              return (
-                <tr data-search={`${provider.name} ${providerId} ${provider.npm} ${provider.api ?? ""}`}>
-                  <td data-sort={provider.name}>
-                    <ProviderLink providerId={providerId} provider={provider} />
-                  </td>
-                  <td data-sort={String(models.length)}>{models.length}</td>
-                  <td class="mono">{provider.npm}</td>
-                  <td class="mono">
-                    {provider.api ? (
-                      <CopyValue value={provider.api} copyValue={provider.api} />
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                  <td>
-                    <a href={provider.doc} target="_blank" rel="noopener noreferrer">
-                      Docs
-                    </a>
-                  </td>
-                </tr>
-              );
-            })}
-            <EmptyRow columns={5} />
-          </tbody>
-        </table>
-      </TableSection>
-  );
-}
-
-function LabsPage(props: { labs: LabEntry[] }) {
-  return (
-      <TableSection title="Labs" count={props.labs.length} columns={5} hideHeading>
-        <table data-enhanced-table>
-          <thead>
-            <tr>
-              <SortableTh>Lab</SortableTh>
-              <SortableTh>Description</SortableTh>
-              <SortableTh type="number">Models</SortableTh>
-              <SortableTh type="number">Providers</SortableTh>
-              <SortableTh>Last Updated</SortableTh>
-            </tr>
-          </thead>
-          <tbody>
-            {props.labs.map((lab) => (
-              <tr data-search={`${lab.name} ${lab.description ?? ""} ${lab.id} ${lab.families.join(" ")}`}>
-                <td data-sort={lab.name}>
-                  <LabLink labId={lab.id} labName={lab.name} />
-                  <span class="subtle mono">{lab.id}</span>
-                </td>
-                <td>{lab.description ?? "-"}</td>
-                <td data-sort={String(lab.models.length)}>{lab.models.length}</td>
-                <td data-sort={String(lab.providerCount)}>{lab.providerCount}</td>
-                <td data-sort={sortDate(lab.lastUpdated)}>{lab.lastUpdated ?? "-"}</td>
-              </tr>
-            ))}
-            <EmptyRow columns={5} />
-          </tbody>
-        </table>
-      </TableSection>
-  );
-}
-
-function ModelPage(props: { model: ModelEntry }) {
-  const { model } = props;
-  const metadata = model.metadata;
-
-  return (
-    <Fragment>
-      <DetailHeader
-        eyebrow={
-          <Fragment>
-            <a href="/models">Models</a>
-            <span>/</span>
-            <a href={labHref(model.labId)}>{model.labName}</a>
-          </Fragment>
-        }
-        title={metadata.name}
-        description={metadata.description}
-        code={model.id}
-        copyValue={model.id}
-      />
-      <Facts
-        items={[
-          ["Lab", <LabLink labId={model.labId} labName={model.labName} />],
-          ["Family", metadata.family ?? "-"],
-          ["Providers", model.providers.length],
-          ["Context", formatNumber(metadata.limit?.context)],
-          ["Output limit", formatNumber(metadata.limit?.output)],
-          ["Knowledge", knowledgeText(metadata.knowledge)],
-          ["Release", metadata.release_date ?? "-"],
-          ["Updated", metadata.last_updated ?? "-"],
-          ["Weights", <WeightsValue metadata={metadata} />],
-          ["Input", <FactModalities modalities={metadata.modalities?.input} />],
-          ["Output types", <FactModalities modalities={metadata.modalities?.output} />],
-          [
-            "Capabilities",
-            capabilitySummary([
-              ["tools", metadata.tool_call],
-              ["reasoning", metadata.reasoning],
-              ["structured", metadata.structured_output],
-              ["temperature", metadata.temperature],
-            ]),
-          ],
-        ]}
-      />
-      <TableSection
-        id="providers"
-        title="Providers"
-        count={model.providers.length}
-        columns={10}
-      >
-        <ProviderModelsTable models={model.providers} mode="model" />
-      </TableSection>
-    </Fragment>
-  );
-}
-
-function ProviderPage(props: {
-  providerId: string;
-  provider: CatalogProvider;
-  models: ProviderModelEntry[];
-}) {
-  return (
-    <Fragment>
-      <DetailHeader
-        eyebrow={<a href="/providers">Providers</a>}
-        title={props.provider.name}
-        code={props.providerId}
-        copyValue={props.providerId}
-      />
-      <Facts
-        items={[
-          ["Models", props.models.length],
-          ["Package", <span class="mono">{props.provider.npm}</span>],
-          ["API", <span class="mono">{props.provider.api ?? "-"}</span>],
-          [
-            "Docs",
-            <a href={props.provider.doc} target="_blank" rel="noopener noreferrer">
-              Provider docs
-            </a>,
-          ],
-        ]}
-      />
-      <TableSection title="Models" count={props.models.length} columns={9}>
-        <ProviderModelsTable models={props.models} mode="provider" showLab={false} />
-      </TableSection>
-    </Fragment>
-  );
-}
-
-function LabPage(props: { lab: LabEntry }) {
-  return (
-    <Fragment>
-      <DetailHeader
-        eyebrow={<a href="/labs">Labs</a>}
-        title={props.lab.name}
-        description={props.lab.description}
-        code={props.lab.id}
-        copyValue={props.lab.id}
-      />
-      <Facts
-        items={[
-          ["Models", props.lab.models.length],
-          ["Providers", props.lab.providerCount],
-          ["Updated", props.lab.lastUpdated ?? "-"],
-        ]}
-      />
-      <ModelTable models={props.lab.models} title="Models" showLab={false} />
-    </Fragment>
-  );
-}
-
-function Overview(props: {
-  title: string;
-  subtitle: string;
-  stats: Array<[string, string | number]>;
-}) {
-  return (
-    <section class="overview">
-      <div>
-        <h2>{props.title}</h2>
-        <p>{props.subtitle}</p>
-      </div>
-      <dl class="stats-strip">
-        {props.stats.map(([label, value]) => (
-          <div>
-            <dt>{label}</dt>
-            <dd>{typeof value === "number" ? formatNumber(value) : value}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
-  );
-}
-
 function DetailHeader(props: {
   eyebrow: unknown;
   title: string;
@@ -974,259 +1189,6 @@ function Facts(props: { items: Array<[string, unknown]> }) {
         </div>
       ))}
     </dl>
-  );
-}
-
-function FactModalities(props: { modalities?: string[] }) {
-  if (!props.modalities || props.modalities.length === 0) return <span>-</span>;
-
-  return (
-    <div
-      class="modalities fact-modalities"
-      dangerouslySetInnerHTML={{
-        __html: props.modalities.map(renderModalityIcon).join(""),
-      }}
-    />
-  );
-}
-
-function ModelTable(props: {
-  models: ModelEntry[];
-  title: string;
-  hideHeading?: boolean;
-  showLab?: boolean;
-}) {
-  const showLab = props.showLab ?? true;
-  const columns = showLab ? 14 : 13;
-
-  return (
-    <TableSection
-      title={props.title}
-      count={props.models.length}
-      columns={columns}
-      hideHeading={props.hideHeading}
-    >
-      <table data-enhanced-table>
-        <thead>
-          <tr>
-            <SortableTh>Model</SortableTh>
-            {showLab && <SortableTh>Lab</SortableTh>}
-            <SortableTh type="number">Providers</SortableTh>
-            <SortableTh type="number">Context</SortableTh>
-            <SortableTh type="number">Output</SortableTh>
-            <SortableTh>Input</SortableTh>
-            <SortableTh>Reasoning</SortableTh>
-            <SortableTh>Tool Call</SortableTh>
-            <SortableTh>Structured</SortableTh>
-            <SortableTh>Temperature</SortableTh>
-            <SortableTh>Weights</SortableTh>
-            <SortableTh type="number">Price</SortableTh>
-            <SortableTh>Release</SortableTh>
-            <SortableTh>Updated</SortableTh>
-          </tr>
-        </thead>
-        <tbody>
-          {props.models.map((model) => {
-            const metadata = model.metadata;
-
-            return (
-              <tr
-                data-search={`${metadata.name} ${metadata.description} ${model.id} ${model.labName} ${metadata.family ?? ""} ${weightsText(metadata.open_weights)} ${booleanText(metadata.reasoning)} ${booleanText(metadata.tool_call)} ${booleanText(metadata.structured_output)} ${booleanText(metadata.temperature)}`}
-              >
-                <td data-sort={metadata.name}>
-                  <a class="primary-link" href={modelHref(model.id)}>
-                    {metadata.name}
-                  </a>
-                  <span class="subtle mono">{model.id}</span>
-                </td>
-                {showLab && (
-                  <td data-sort={model.labName}>
-                    <LabLink labId={model.labId} labName={model.labName} />
-                  </td>
-                )}
-                <td data-sort={String(model.providers.length)}>
-                  <a href={`${modelHref(model.id)}#providers`}>
-                    {model.providers.length}
-                  </a>
-                </td>
-                <td data-sort={sortNumber(metadata.limit?.context)}>
-                  {formatNumber(metadata.limit?.context)}
-                </td>
-                <td data-sort={sortNumber(metadata.limit?.output)}>
-                  {formatNumber(metadata.limit?.output)}
-                </td>
-                <td
-                  data-sort={[
-                    ...(metadata.modalities?.input ?? []),
-                    ...(metadata.modalities?.output ?? []),
-                  ].join(" ")}
-                  dangerouslySetInnerHTML={{
-                    __html: renderModalities(metadata.modalities?.input),
-                  }}
-                />
-                <td data-sort={booleanText(metadata.reasoning)}>
-                  {booleanText(metadata.reasoning)}
-                </td>
-                <td data-sort={booleanText(metadata.tool_call)}>
-                  {booleanText(metadata.tool_call)}
-                </td>
-                <td data-sort={booleanText(metadata.structured_output)}>
-                  {booleanText(metadata.structured_output)}
-                </td>
-                <td data-sort={booleanText(metadata.temperature)}>
-                  {booleanText(metadata.temperature)}
-                </td>
-                <td data-sort={weightsText(metadata.open_weights)}>
-                  <WeightsValue metadata={metadata} />
-                </td>
-                <td data-sort={sortNumber(model.minInputCost)}>
-                  {costSummary(model.minInputCost, model.minOutputCost)}
-                </td>
-                <td data-sort={sortDate(metadata.release_date)}>
-                  {metadata.release_date ?? "-"}
-                </td>
-                <td data-sort={sortDate(metadata.last_updated)}>
-                  {metadata.last_updated ?? "-"}
-                </td>
-              </tr>
-            );
-          })}
-          <EmptyRow columns={columns} />
-        </tbody>
-      </table>
-    </TableSection>
-  );
-}
-
-function ProviderModelsTable(props: {
-  models: ProviderModelEntry[];
-  mode: "model" | "provider";
-  showLab?: boolean;
-}) {
-  const showLab = props.showLab ?? props.mode === "model";
-  const columns = showLab ? 10 : 9;
-
-  return (
-    <table data-enhanced-table>
-      <thead>
-        <tr>
-          {props.mode === "model" ? (
-            <SortableTh>Provider</SortableTh>
-          ) : (
-            <SortableTh>Model</SortableTh>
-          )}
-          {showLab && <SortableTh>Lab</SortableTh>}
-          <SortableTh>Model ID</SortableTh>
-          <SortableTh type="number">Context</SortableTh>
-          <SortableTh type="number">Output</SortableTh>
-          <SortableTh type="number">Price</SortableTh>
-          <SortableTh>Reasoning</SortableTh>
-          <SortableTh>Tool Call</SortableTh>
-          <SortableTh>Structured</SortableTh>
-          <SortableTh>Temperature</SortableTh>
-        </tr>
-      </thead>
-      <tbody>
-        {props.models.map((entry) => {
-          const canonical = entry.canonical;
-          const displayName = displayModelName(entry);
-          const lab = canonical
-            ? { id: canonical.labId, name: canonical.labName }
-            : undefined;
-
-          return (
-            <tr
-              data-search={`${displayName} ${entry.model.description} ${entry.modelId} ${entry.provider.name} ${entry.providerId} ${lab?.name ?? ""} ${entry.model.family ?? ""} ${booleanText(entry.model.reasoning)} ${booleanText(entry.model.tool_call)} ${booleanText(entry.model.structured_output)} ${booleanText(entry.model.temperature)}`}
-            >
-              {props.mode === "model" ? (
-                <td data-sort={entry.provider.name}>
-                  <ProviderLink providerId={entry.providerId} provider={entry.provider} />
-                </td>
-              ) : (
-                <td data-sort={displayName}>
-                  {canonical ? (
-                    <a class="primary-link" href={modelHref(canonical.id)}>
-                      {displayName}
-                    </a>
-                  ) : (
-                    <span>{displayName}</span>
-                  )}
-                  {canonical ? (
-                    <span class="subtle mono">{canonical.id}</span>
-                  ) : (
-                    <span class="subtle">Provider-specific</span>
-                  )}
-                </td>
-              )}
-              {showLab && (
-                <td data-sort={lab?.name ?? ""}>
-                  {lab ? <LabLink labId={lab.id} labName={lab.name} /> : "-"}
-                </td>
-              )}
-              <td class="mono" data-sort={entry.modelId}>
-                <CopyValue
-                  value={entry.modelId}
-                  copyValue={`${entry.providerId}/${entry.modelId}`}
-                />
-              </td>
-              <td data-sort={sortNumber(entry.model.limit.context)}>
-                {formatNumber(entry.model.limit.context)}
-              </td>
-              <td data-sort={sortNumber(entry.model.limit.output)}>
-                {formatNumber(entry.model.limit.output)}
-              </td>
-              <td data-sort={sortNumber(entry.model.cost?.input)}>
-                {costSummary(entry.model.cost?.input, entry.model.cost?.output)}
-              </td>
-              <td data-sort={booleanText(entry.model.reasoning)}>
-                {booleanText(entry.model.reasoning)}
-              </td>
-              <td data-sort={booleanText(entry.model.tool_call)}>
-                {booleanText(entry.model.tool_call)}
-              </td>
-              <td data-sort={booleanText(entry.model.structured_output)}>
-                {booleanText(entry.model.structured_output)}
-              </td>
-              <td data-sort={booleanText(entry.model.temperature)}>
-                {booleanText(entry.model.temperature)}
-              </td>
-            </tr>
-          );
-        })}
-        <EmptyRow columns={columns} />
-      </tbody>
-    </table>
-  );
-}
-
-function CopyValue(props: { value: string; copyValue: string }) {
-  return (
-    <span class="copy-cell">
-      <span class="copy-source">{props.value}</span>
-      <CopyButton value={props.copyValue} label={`Copy ${props.copyValue}`} />
-    </span>
-  );
-}
-
-function WeightsValue(props: { metadata: CatalogModel }) {
-  const label = weightsText(props.metadata.open_weights);
-  const href = weightHref(props.metadata);
-
-  if (label === "Open" && href) {
-    return (
-      <a href={href} target="_blank" rel="noopener noreferrer">
-        {label}
-      </a>
-    );
-  }
-
-  return <span>{label}</span>;
-}
-
-function weightHref(metadata: CatalogModel) {
-  return (
-    metadata.weights?.[0]?.url ??
-    metadata.links?.find((link) => link.type === "weights")?.url
   );
 }
 
@@ -1270,7 +1232,7 @@ function EmptyRow(props: { columns: number }) {
 
 function ProviderLink(props: {
   providerId: string;
-  provider: Pick<CatalogProvider, "name">;
+  provider: Pick<Provider, "name">;
 }) {
   return (
     <a class="provider-link" href={providerHref(props.providerId)}>
@@ -1279,18 +1241,6 @@ function ProviderLink(props: {
         dangerouslySetInnerHTML={{ __html: providerLogoSvg(props.providerId) }}
       />
       <span>{props.provider.name}</span>
-    </a>
-  );
-}
-
-function LabLink(props: { labId: string; labName: string }) {
-  return (
-    <a class="lab-link" href={labHref(props.labId)}>
-      <span
-        class="lab-logo"
-        dangerouslySetInnerHTML={{ __html: labLogoSvg(props.labId) }}
-      />
-      <span>{props.labName}</span>
     </a>
   );
 }
@@ -1338,7 +1288,7 @@ function CopyButton(props: { value: string; label: string }) {
   );
 }
 
-function MobileMenu(props: { active: "models" | "providers" | "labs" }) {
+function MobileMenu(props: { active: ActiveSection }) {
   return (
     <dialog
       id="mobile-menu"
@@ -1371,8 +1321,8 @@ function MobileMenu(props: { active: "models" | "providers" | "labs" }) {
         </button>
       </div>
       <nav class="mobile-menu-list" aria-label="Mobile">
-        <a class={props.active === "models" ? "active" : ""} href="/models">
-          Models
+        <a class={props.active === "gpus" ? "active" : ""} href="/gpus">
+          GPUs
         </a>
         <a
           class={props.active === "providers" ? "active" : ""}
@@ -1380,8 +1330,8 @@ function MobileMenu(props: { active: "models" | "providers" | "labs" }) {
         >
           Providers
         </a>
-        <a class={props.active === "labs" ? "active" : ""} href="/labs">
-          Labs
+        <a class={props.active === "regions" ? "active" : ""} href="/regions">
+          Regions
         </a>
         <button type="button" id="mobile-search-trigger">
           Search
@@ -1389,7 +1339,7 @@ function MobileMenu(props: { active: "models" | "providers" | "labs" }) {
         <a
           target="_blank"
           rel="noopener noreferrer"
-          href="https://github.com/sst/models.dev"
+          href="https://github.com/anomalyco/models.dev"
         >
           GitHub
         </a>
@@ -1430,7 +1380,7 @@ function SearchDialog(props: { items: SearchIndexItem[] }) {
         <input
           id="search-input"
           type="text"
-          placeholder="Search models, providers, and labs"
+          placeholder="Search GPUs, providers, and regions"
           autocomplete="off"
           spellcheck="false"
           role="combobox"
@@ -1485,153 +1435,76 @@ function HelpDialog() {
       </div>
       <div class="body">
         <p>
-          <a href="/">Models.dev</a> is a comprehensive open-source database of
-          AI model specifications, pricing, and features.
+          <a href="/">{SITE_NAME}</a> is an open database of on-demand GPU cloud
+          pricing, specs, and availability.
         </p>
         <p>
-          The homepage starts with provider-agnostic model metadata. Model pages
-          list the providers serving that model; provider pages list every model
-          available from that provider; lab pages group canonical models by
-          author.
+          The homepage lists canonical GPUs with the best per-GPU hourly price
+          across providers. GPU pages list every provider offering that GPU;
+          provider pages list a provider's instances; region pages group
+          offerings by geography. All prices are per instance per hour; the
+          per-GPU price divides by the instance's GPU count.
         </p>
         <h2>API</h2>
-        <p>
-          You can access provider data, provider-agnostic model metadata, or the
-          combined catalog through JSON endpoints.
-        </p>
+        <p>Access the catalog through JSON endpoints.</p>
         <div class="code-block">
           <code>
-            curl <a href="/api.json">https://models.dev/api.json</a>
+            curl <a href="/api.json">/api.json</a>
           </code>
         </div>
         <div class="code-block">
           <code>
-            curl <a href="/models.json">https://models.dev/models.json</a>
+            curl <a href="/gpus.json">/gpus.json</a>
           </code>
         </div>
         <div class="code-block">
           <code>
-            curl <a href="/catalog.json">https://models.dev/catalog.json</a>
+            curl <a href="/catalog.json">/catalog.json</a>
           </code>
         </div>
         <h2>Logos</h2>
         <p>
           Provider logos are available at <code>/logos/{`{provider}`}.svg</code>{" "}
-          where <code>{`{provider}`}</code> is the provider ID. Lab logos are
-          available at <code>/logos/labs/{`{lab}`}.svg</code>.
+          where <code>{`{provider}`}</code> is the provider ID.
         </p>
-        <div class="code-block">
-          <code>
-            curl{" "}
-            <a href="/logos/anthropic.svg">
-              https://models.dev/logos/anthropic.svg
-            </a>
-          </code>
-        </div>
-        <h2>SDK</h2>
-        <p>
-          Use the SDK to query the API from your app. It's type-safe and
-          exports the latest snapshot for offline use.
-        </p>
-        <div class="code-block">
-          <code>
-            npm install{" "}
-            <a href="https://www.npmjs.com/package/@opencode-ai/models">
-              @opencode-ai/models
-            </a>
-          </code>
-        </div>
         <h2>Contribute</h2>
         <p>
-          The data is stored in{" "}
-          <a
-            href="https://github.com/anomalyco/models.dev"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            GitHub
-          </a>{" "}
-          as TOML files organized by provider and canonical model.
+          The data is stored as TOML files: canonical GPUs in <code>gpus/</code>,
+          provider offerings in <code>providers/</code>, and regions in{" "}
+          <code>regions/</code>.
         </p>
       </div>
       <div class="footer">
         <a
-          href="https://github.com/sst/models.dev"
+          href="https://github.com/anomalyco/models.dev"
           target="_blank"
           rel="noopener noreferrer"
         >
           Edit on GitHub
-        </a>
-        <a href="https://opencode.ai" target="_blank" rel="noopener noreferrer">
-          Created by OpenCode
         </a>
       </div>
     </dialog>
   );
 }
 
-function sortModels(models: ModelEntry[]) {
-  return [...models].sort((a, b) => {
-    const updated = (b.metadata.last_updated ?? "").localeCompare(
-      a.metadata.last_updated ?? "",
-    );
-    if (updated !== 0) return updated;
+/////////////////////////
+// Helpers
+/////////////////////////
 
+function sortGpus(gpus: GpuEntry[]) {
+  return [...gpus].sort((a, b) => {
     const released = (b.metadata.release_date ?? "").localeCompare(
       a.metadata.release_date ?? "",
     );
     if (released !== 0) return released;
-
     return a.metadata.name.localeCompare(b.metadata.name);
   });
 }
 
-function displayModelName(entry: ProviderModelEntry) {
-  return entry.canonical?.metadata.name ?? entry.model.name;
-}
-
-function maxModelDate(
-  entries: ProviderModelEntry[],
-  field: "last_updated" | "release_date",
-) {
-  let result: string | undefined;
-  for (const entry of entries) {
-    const value = entry.canonical?.metadata[field];
-    if (value && (result === undefined || value > result)) result = value;
-  }
-  return result;
-}
-
-function countLinkedProviderEntries() {
-  return ProviderModelEntries.filter(
-    (entry) => entry.canonicalModelId !== undefined,
-  ).length;
-}
-
-function loadLabMetadata(root: string) {
-  const result = new Map<string, { description?: string }>();
-  const labsPath = path.join(root, "labs");
-  if (!existsSync(labsPath)) return result;
-
-  for (const labId of readdirSync(labsPath)) {
-    const metadataPath = path.join(labsPath, labId, "lab.toml");
-    if (!existsSync(metadataPath)) continue;
-
-    const metadata = Bun.TOML.parse(readFileSync(metadataPath, "utf8")) as Record<
-      string,
-      unknown
-    >;
-    if (
-      metadata.description !== undefined &&
-      (typeof metadata.description !== "string" || metadata.description.length === 0)
-    ) {
-      throw new Error(`Invalid lab description in ${metadataPath}`);
-    }
-
-    result.set(labId, { description: metadata.description });
-  }
-
-  return result;
+function sortedProviders(): Array<[string, Provider]> {
+  return Object.entries(Providers).sort(([, a], [, b]) =>
+    a.name.localeCompare(b.name),
+  );
 }
 
 function minDefined(values: Array<number | undefined>) {
@@ -1643,41 +1516,75 @@ function minDefined(values: Array<number | undefined>) {
   return result;
 }
 
-function labName(labId: string) {
-  const override = LAB_NAME_OVERRIDES[labId];
-  if (override) return override;
+function minValue(current: number | undefined, next: number | undefined) {
+  if (next === undefined) return current;
+  if (current === undefined) return next;
+  return Math.min(current, next);
+}
 
-  const providerName = Providers[labId]?.name;
-  if (providerName) return providerName;
+function maxDate(current: string | undefined, next: string | undefined) {
+  if (!next) return current;
+  if (!current || next > current) return next;
+  return current;
+}
 
-  return labId
-    .split("-")
-    .map((part) => part[0]!.toUpperCase() + part.slice(1))
+function manufacturerName(id: string) {
+  return MANUFACTURER_NAMES[id] ?? titleCase(id);
+}
+
+function providerTypeLabel(type: Provider["type"]) {
+  return PROVIDER_TYPE_LABELS[type] ?? titleCase(type);
+}
+
+function regionName(slug: string) {
+  return Regions[slug]?.name ?? slug;
+}
+
+function plural(count: number, singular: string, pluralForm = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : pluralForm}`;
+}
+
+function compact(parts: Array<string | undefined>, maxLength: number) {
+  const compacted = parts
+    .map((part) => part?.trim())
+    .filter((part): part is string => Boolean(part))
+    .map((part) => (/[.!?]$/.test(part) ? part : `${part}.`))
     .join(" ");
+
+  if (compacted.length <= maxLength) return compacted;
+  const shortened = compacted.slice(0, maxLength - 1);
+  const lastBreak = Math.max(
+    shortened.lastIndexOf("."),
+    shortened.lastIndexOf(","),
+  );
+  const trimmed = (
+    lastBreak > maxLength * 0.6 ? shortened.slice(0, lastBreak) : shortened
+  ).trim();
+  return `${trimmed.replace(/[.,;:]$/, "")}.`;
 }
 
 function encodedPath(id: string) {
   return id.split("/").map(encodeURIComponent).join("/");
 }
 
-function modelHref(id: string) {
-  return `/models/${encodedPath(id)}`;
+function gpuHref(id: string) {
+  return `/gpus/${encodedPath(id)}`;
 }
 
 function providerHref(id: string) {
   return `/providers/${encodeURIComponent(id)}`;
 }
 
-function labHref(id: string) {
-  return `/labs/${encodeURIComponent(id)}`;
+function regionHref(id: string) {
+  return `/regions/${encodeURIComponent(id)}`;
 }
 
 function logoHref(providerId: string) {
   return `/logos/${encodeURIComponent(providerId)}.svg`;
 }
 
-function labLogoHref(labId: string) {
-  return `/logos/labs/${encodeURIComponent(labId)}.svg`;
+function defaultLogoHref() {
+  return "/logos/default.svg";
 }
 
 function providerLogoSvg(providerId: string) {
@@ -1699,27 +1606,5 @@ function providerLogoSvg(providerId: string) {
     .replace(/\sstroke="(?!none|currentColor)[^"]*"/gi, ' stroke="currentColor"');
 
   ProviderLogoSvgs.set(providerId, svg);
-  return svg;
-}
-
-function labLogoSvg(labId: string) {
-  const cached = LabLogoSvgs.get(labId);
-  if (cached) return cached;
-
-  const logoPath = path.join(root, "labs", labId, "logo.svg");
-  const defaultLogoPath = path.join(root, "providers", "logo.svg");
-  const rawSvg = readFileSync(
-    existsSync(logoPath) ? logoPath : defaultLogoPath,
-    "utf8",
-  );
-  const svg = rawSvg
-    .replace(/<svg\b([^>]*)>/i, (_, attributes: string) => {
-      const cleaned = attributes.replace(/\s(width|height)="[^"]*"/gi, "");
-      return `<svg${cleaned} aria-hidden="true" focusable="false">`;
-    })
-    .replace(/\sfill="(?!none)[^"]*"/gi, ' fill="currentColor"')
-    .replace(/\sstroke="(?!none)[^"]*"/gi, ' stroke="currentColor"');
-
-  LabLogoSvgs.set(labId, svg);
   return svg;
 }

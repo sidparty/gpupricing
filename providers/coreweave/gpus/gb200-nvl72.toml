@@ -1,0 +1,20 @@
+# Source: https://www.coreweave.com/pricing (captured 2026-07).
+# Billed instance is a 4-GPU compute slice of the 72-GPU NVL72 rack; on-demand only.
+base_gpu = "nvidia/gb200-nvl72"
+instance = "GB200 NVL72"
+gpus_per_instance = 4
+vcpus = 144
+memory_gb = 960
+local_storage_gb = 30_720
+fabric = "Rack-scale NVLink + Quantum InfiniBand"
+
+[cost]
+hourly = 42.00
+
+[[availability]]
+region = "us"
+provider_region = "US"
+
+[[availability]]
+region = "eu"
+provider_region = "EU"

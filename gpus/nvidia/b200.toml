@@ -1,0 +1,18 @@
+name = "NVIDIA B200"
+description = "Blackwell datacenter GPU with 180 GB HBM3e and FP4 tensor cores for large-scale training and inference."
+architecture = "Blackwell"
+vram_gb = 180
+memory_type = "HBM3e"
+memory_bandwidth_gbs = 8000
+tdp_watts = 1000
+interconnect = "NVLink 5"
+release_date = "2024-03"
+last_updated = "2026-07"
+
+[compute]
+tf32 = 1100
+fp16 = 2250
+bf16 = 2250
+fp8 = 4500
+int8 = 4500
+fp4 = 9000

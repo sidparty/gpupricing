@@ -1,0 +1,22 @@
+# Source: https://www.coreweave.com/pricing (captured 2026-07).
+# On-demand price is identical across North America and Europe; spot differs by region.
+base_gpu = "nvidia/h200-sxm"
+instance = "HGX H200"
+gpus_per_instance = 8
+vcpus = 128
+memory_gb = 2048
+local_storage_gb = 61_440
+fabric = "NVLink + Quantum-2 InfiniBand"
+
+[cost]
+hourly = 50.44
+
+[[availability]]
+region = "us"
+provider_region = "US"
+spot_hourly = 20.93
+
+[[availability]]
+region = "eu"
+provider_region = "EU"
+spot_hourly = 20.64

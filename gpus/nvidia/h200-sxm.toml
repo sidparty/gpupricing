@@ -1,0 +1,17 @@
+name = "NVIDIA H200 SXM"
+description = "Hopper GPU with 141 GB of HBM3e for memory-bound inference and long-context workloads."
+architecture = "Hopper"
+vram_gb = 141
+memory_type = "HBM3e"
+memory_bandwidth_gbs = 4800
+tdp_watts = 700
+interconnect = "NVLink 4"
+release_date = "2024-06"
+last_updated = "2026-07"
+
+[compute]
+tf32 = 494.7
+fp16 = 989.5
+bf16 = 989.5
+fp8 = 1978.9
+int8 = 1978.9

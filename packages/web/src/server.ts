@@ -1,5 +1,5 @@
 import Index from "../index.html";
-import { getRenderedPage, Models, Providers, renderDocument } from "./render";
+import { getRenderedPage, Gpus, Providers, Regions, renderDocument } from "./render";
 import path from "path";
 
 const assetPort = Number(Bun.env.ASSET_PORT ?? 16000);
@@ -32,39 +32,6 @@ Bun.serve({
         path.join(import.meta.dir, new URL(req.url).pathname)
       );
       return new Response(file);
-    },
-    "/logos/labs/*": async (req) => {
-      const url = new URL(req.url);
-      const lab = url.pathname.split("/")[3].replace(".svg", "");
-      const logoPath = path.join(
-        import.meta.dir,
-        "..",
-        "..",
-        "..",
-        "labs",
-        lab,
-        "logo.svg"
-      );
-      const defaultLogoPath = path.join(
-        import.meta.dir,
-        "..",
-        "..",
-        "..",
-        "providers",
-        "logo.svg"
-      );
-
-      let file = Bun.file(logoPath);
-      if (!(await file.exists())) {
-        file = Bun.file(defaultLogoPath);
-      }
-
-      return new Response(file, {
-        headers: {
-          "Content-Type": "image/svg+xml",
-          "Cache-Control": "public, max-age=3600",
-        },
-      });
     },
     "/logos/*": async (req) => {
       const url = new URL(req.url);
@@ -105,15 +72,15 @@ Bun.serve({
           "Cache-Control": "public, max-age=3600",
         },
       }),
-    "/models.json": () =>
-      Response.json(Models, {
+    "/gpus.json": () =>
+      Response.json(Gpus, {
         headers: {
           "Cache-Control": "public, max-age=3600",
         },
       }),
     "/catalog.json": () =>
       Response.json(
-        { models: Models, providers: Providers },
+        { gpus: Gpus, providers: Providers, regions: Regions },
         {
           headers: {
             "Cache-Control": "public, max-age=3600",

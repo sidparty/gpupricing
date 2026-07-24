@@ -1,23 +1,23 @@
 type SortDirection = "asc" | "desc";
 
 interface SearchIndexItem {
-  type: "model" | "provider" | "lab";
+  type: "gpu" | "provider" | "region";
   title: string;
   id: string;
   href: string;
   logo: string;
   tokens: string[];
-  lab?: string;
-  modelCount?: number;
+  manufacturer?: string;
+  providerType?: string;
+  vramGb?: number;
   providerCount?: number;
-  context?: number;
-  releaseDate?: string;
-  inputCost?: number;
-  outputCost?: number;
-  description?: string;
-  npm?: string;
-  api?: string;
+  regionCount?: number;
+  gpuCount?: number;
+  offeringCount?: number;
+  minPricePerGpuHour?: number;
+  location?: string;
   updated?: string;
+  description?: string;
 }
 
 interface SearchResult {
@@ -175,7 +175,7 @@ function scoreSearchItem(item: SearchIndexItem, query: string) {
     score += 36;
   }
 
-  if (item.type === "model") score += 8;
+  if (item.type === "gpu") score += 8;
   return score;
 }
 
@@ -208,7 +208,7 @@ function compareSearchDates(a?: string, b?: string) {
 }
 
 function searchSortDate(item: SearchIndexItem) {
-  return item.releaseDate ?? item.updated;
+  return item.updated;
 }
 
 function formatCompactNumber(value?: number) {
@@ -216,11 +216,9 @@ function formatCompactNumber(value?: number) {
   return compactNumberFormatter.format(value);
 }
 
-function formatCost(input?: number, output?: number) {
-  if (input === undefined && output === undefined) return undefined;
-  const inputText = input === undefined ? "-" : `$${input.toFixed(2)}`;
-  const outputText = output === undefined ? "-" : `$${output.toFixed(2)}`;
-  return `${inputText} / ${outputText}`;
+function formatPerGpuHour(value?: number) {
+  if (value === undefined) return undefined;
+  return `from $${value.toFixed(2)}/GPU/hr`;
 }
 
 function appendHighlightedText(
@@ -265,34 +263,40 @@ function appendHighlightedText(
 }
 
 function resultMeta(item: SearchIndexItem) {
-  if (item.type === "model") {
+  if (item.type === "gpu") {
     return [
-      item.lab,
+      item.manufacturer,
+      item.vramGb === undefined ? undefined : `${item.vramGb} GB`,
       item.providerCount === undefined
         ? undefined
         : `${item.providerCount} providers`,
-      item.context === undefined
+      item.regionCount === undefined
         ? undefined
-        : `${formatCompactNumber(item.context)} context`,
-      formatCost(item.inputCost, item.outputCost),
-      item.updated,
+        : `${item.regionCount} regions`,
+      formatPerGpuHour(item.minPricePerGpuHour),
     ].filter((value): value is string => Boolean(value));
   }
 
   if (item.type === "provider") {
     return [
-      item.modelCount === undefined ? undefined : `${item.modelCount} models`,
-      item.npm,
-      item.api,
+      item.providerType,
+      item.offeringCount === undefined
+        ? undefined
+        : `${item.offeringCount} instances`,
+      item.regionCount === undefined
+        ? undefined
+        : `${item.regionCount} regions`,
+      formatPerGpuHour(item.minPricePerGpuHour),
     ].filter((value): value is string => Boolean(value));
   }
 
   return [
-    item.modelCount === undefined ? undefined : `${item.modelCount} models`,
+    item.location,
     item.providerCount === undefined
       ? undefined
       : `${item.providerCount} providers`,
-    item.updated,
+    item.gpuCount === undefined ? undefined : `${item.gpuCount} GPUs`,
+    formatPerGpuHour(item.minPricePerGpuHour),
   ].filter((value): value is string => Boolean(value));
 }
 
@@ -399,7 +403,7 @@ function renderSearchResults() {
   const normalizedQuery = normalizeSearchText(query);
   searchCount.textContent = normalizedQuery
     ? `${rankedSearchResults.length} result${rankedSearchResults.length === 1 ? "" : "s"}`
-    : "Recently updated models, providers, and labs";
+    : "Recently updated GPUs, providers, and regions";
   searchEmpty.hidden = rankedSearchResults.length > 0;
 
   if (rankedSearchResults.length > 0) {

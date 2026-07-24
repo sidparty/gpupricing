@@ -1,0 +1,19 @@
+name = "NVIDIA B300"
+description = "Blackwell Ultra GPU with 288 GB HBM3e and boosted NVFP4 throughput for frontier inference."
+architecture = "Blackwell Ultra"
+vram_gb = 288
+memory_type = "HBM3e"
+memory_bandwidth_gbs = 8000
+tdp_watts = 1400
+interconnect = "NVLink 5"
+release_date = "2025-03"
+last_updated = "2026-07"
+
+# INT8 omitted: Blackwell Ultra de-emphasizes INT8 in favor of NVFP4; NVIDIA does not
+# publish a dense per-GPU INT8 figure for the HGX B300 platform.
+[compute]
+tf32 = 1125
+fp16 = 2250
+bf16 = 2250
+fp8 = 4500
+fp4 = 13500

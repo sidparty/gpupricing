@@ -1,0 +1,22 @@
+# Source: https://www.coreweave.com/pricing (captured 2026-07).
+# On-demand price is identical across North America and Europe; spot differs by region.
+base_gpu = "nvidia/rtx-pro-6000-blackwell"
+instance = "RTX PRO 6000 Blackwell Server Edition"
+gpus_per_instance = 8
+vcpus = 128
+memory_gb = 1024
+local_storage_gb = 7_680
+fabric = "Ethernet (PCIe)"
+
+[cost]
+hourly = 20.00
+
+[[availability]]
+region = "us"
+provider_region = "US"
+spot_hourly = 11.09
+
+[[availability]]
+region = "eu"
+provider_region = "EU"
+spot_hourly = 11.01

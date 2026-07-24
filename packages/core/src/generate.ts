@@ -3,73 +3,113 @@ import { existsSync } from "node:fs";
 import { mergeDeep } from "remeda";
 import { z } from "zod";
 
-import {
-  Provider,
-  Model,
-  AuthoredModel,
-  AuthoredModelShape,
-  ModelMetadata,
-} from "./schema.js";
+import { Provider, GpuOffering, GpuMetadata, Region } from "./schema.js";
 
-const BaseModel = AuthoredModelShape
-  .deepPartial()
+const BaseGpuOffering = GpuOffering.deepPartial()
   .extend({
     id: z.string(),
-    base_model: z.string().min(1, "Base model cannot be empty"),
-    base_model_omit: z.array(z.string()).optional(),
+    base_gpu: z.string().min(1, "Base GPU cannot be empty"),
+    base_gpu_omit: z.array(z.string()).optional(),
   })
   .strict();
 
-export async function generateCatalog(directory: string) {
-  const models = await generateModels(path.join(directory, "models"));
-  const providers = await generateProviders(
-    path.join(directory, "providers"),
-    models,
-  );
-
-  return { models, providers };
+export interface Catalog {
+  gpus: Record<string, GpuMetadata>;
+  regions: Record<string, Region>;
+  providers: Record<string, Provider>;
 }
 
-export async function generateModels(directory: string) {
-  const result: Record<string, ModelMetadata> = {};
+export async function generateCatalog(directory: string): Promise<Catalog> {
+  const gpus = await generateGpus(path.join(directory, "gpus"));
+  const regions = await generateRegions(path.join(directory, "regions"));
+  const providers = await generateProviders(
+    path.join(directory, "providers"),
+    gpus,
+    regions,
+  );
+
+  return { gpus, regions, providers };
+}
+
+export async function generateGpus(directory: string) {
+  const result: Record<string, GpuMetadata> = {};
   if (!existsSync(directory)) return result;
 
-  for await (const modelPath of new Bun.Glob("**/*.toml").scan({
+  for await (const gpuPath of new Bun.Glob("**/*.toml").scan({
     cwd: directory,
     absolute: true,
     followSymlinks: true,
   })) {
-    const modelID = path.relative(directory, modelPath).split(path.sep).join("/").slice(0, -5);
-    const toml = await import(modelPath, {
+    const gpuID = path
+      .relative(directory, gpuPath)
+      .split(path.sep)
+      .join("/")
+      .slice(0, -5);
+    const toml = await import(gpuPath, {
       with: {
         type: "toml",
       },
     }).then((mod) => mod.default);
-    toml.id = modelID;
+    toml.id = gpuID;
 
-    const model = ModelMetadata.safeParse(toml);
-    if (!model.success) {
-      model.error.cause = { modelPath, toml };
-      throw model.error;
+    const gpu = GpuMetadata.safeParse(toml);
+    if (!gpu.success) {
+      gpu.error.cause = { gpuPath, toml };
+      throw gpu.error;
     }
-    result[modelID] = model.data;
+    result[gpuID] = gpu.data;
   }
 
   return result;
 }
 
-export async function generate(directory: string) {
-  const modelsDirectory = path.join(path.dirname(directory), "models");
-  const models = await generateModels(modelsDirectory);
+export async function generateRegions(directory: string) {
+  const result: Record<string, Region> = {};
+  if (!existsSync(directory)) return result;
 
-  return generateProviders(directory, models);
+  for await (const regionPath of new Bun.Glob("*/region.toml").scan({
+    cwd: directory,
+    absolute: true,
+  })) {
+    const regionID = path.basename(path.dirname(regionPath));
+    const toml = await import(regionPath, {
+      with: {
+        type: "toml",
+      },
+    }).then((mod) => mod.default);
+    toml.id = regionID;
+
+    const region = Region.safeParse(toml);
+    if (!region.success) {
+      region.error.cause = { regionPath, toml };
+      throw region.error;
+    }
+    result[regionID] = region.data;
+  }
+
+  return result;
+}
+
+/**
+ * Validate a provider tree against the repo root's `gpus/` and `regions/`.
+ * Used by `bun validate`.
+ */
+export async function generate(directory: string) {
+  const root = path.dirname(directory);
+  const gpus = await generateGpus(path.join(root, "gpus"));
+  const regions = await generateRegions(path.join(root, "regions"));
+
+  return generateProviders(directory, gpus, regions);
 }
 
 async function generateProviders(
   directory: string,
-  models: Record<string, ModelMetadata>,
+  gpus: Record<string, GpuMetadata>,
+  regions: Record<string, Region>,
 ) {
   const result: Record<string, Provider> = {};
+  if (!existsSync(directory)) return result;
+
   for await (const providerPath of new Bun.Glob("*/provider.toml").scan({
     cwd: directory,
     absolute: true,
@@ -81,49 +121,59 @@ async function generateProviders(
       },
     }).then((mod) => mod.default);
     toml.id = providerID;
-    toml.models = {};
+    toml.gpus = {};
     const provider = Provider.safeParse(toml);
     if (!provider.success) {
       provider.error.cause = { providerPath, toml };
       throw provider.error;
     }
 
-    const modelsPath = path.join(directory, providerID, "models");
-    for await (const modelPath of new Bun.Glob("**/*.toml").scan({
-      cwd: modelsPath,
+    const gpusPath = path.join(directory, providerID, "gpus");
+    for await (const offeringPath of new Bun.Glob("**/*.toml").scan({
+      cwd: gpusPath,
       absolute: true,
       followSymlinks: true,
     })) {
-      const modelID = path.relative(modelsPath, modelPath).split(path.sep).join("/").slice(0, -5);
-      const toml = await import(modelPath, {
+      const offeringID = path
+        .relative(gpusPath, offeringPath)
+        .split(path.sep)
+        .join("/")
+        .slice(0, -5);
+      const toml = await import(offeringPath, {
         with: {
           type: "toml",
         },
       }).then((mod) => mod.default);
-      toml.id = modelID;
-      if (toml.base_model !== undefined) {
-        const baseModel = BaseModel.safeParse(toml);
-        if (!baseModel.success) {
-          baseModel.error.cause = { modelPath, toml };
-          throw baseModel.error;
+      toml.id = offeringID;
+
+      let offering: GpuOffering;
+      if (toml.base_gpu !== undefined) {
+        const base = BaseGpuOffering.safeParse(toml);
+        if (!base.success) {
+          base.error.cause = { offeringPath, toml };
+          throw base.error;
         }
 
-        const merged = mergeBaseModel(baseModel.data, models, modelPath);
-        const model = AuthoredModel.safeParse(merged);
-        if (!model.success) {
-          model.error.cause = { modelPath, toml: merged };
-          throw model.error;
+        const merged = mergeBaseGpu(base.data, gpus, offeringPath);
+        const parsed = GpuOffering.safeParse(merged);
+        if (!parsed.success) {
+          parsed.error.cause = { offeringPath, toml: merged };
+          throw parsed.error;
         }
-        provider.data.models[modelID] = normalizeModelCost(model.data);
-        continue;
+        offering = parsed.data;
+      } else {
+        const parsed = GpuOffering.safeParse(toml);
+        if (!parsed.success) {
+          parsed.error.cause = { offeringPath, toml };
+          throw parsed.error;
+        }
+        offering = parsed.data;
       }
-      const model = AuthoredModel.safeParse(toml);
-      if (!model.success) {
-        model.error.cause = { modelPath, toml };
-        throw model.error;
-      }
-      provider.data.models[modelID] = normalizeModelCost(model.data);
+
+      validateAvailability(offering, regions, offeringPath);
+      provider.data.gpus[offeringID] = offering;
     }
+
     result[providerID] = provider.data;
   }
 
@@ -134,7 +184,12 @@ async function generateProviders(
     if (existingID !== undefined) {
       throw new Error(
         `Duplicate provider name "${provider.name}" used by both "${existingID}" and "${provider.id}". Provider names must be unique.`,
-        { cause: { providerIDs: [existingID, provider.id], name: provider.name } },
+        {
+          cause: {
+            providerIDs: [existingID, provider.id],
+            name: provider.name,
+          },
+        },
       );
     }
     nameToProviderID.set(nameKey, provider.id);
@@ -143,36 +198,47 @@ async function generateProviders(
   return result;
 }
 
-function mergeBaseModel(
-  model: z.infer<typeof BaseModel>,
-  models: Record<string, ModelMetadata>,
-  modelPath: string,
+function validateAvailability(
+  offering: GpuOffering,
+  regions: Record<string, Region>,
+  offeringPath: string,
 ) {
-  const base = models[model.base_model];
+  // Skip cross-validation when no regions are defined at all (partial trees).
+  if (Object.keys(regions).length === 0) return;
+
+  for (const entry of offering.availability) {
+    if (regions[entry.region] === undefined) {
+      throw new Error(
+        `Unknown availability region "${entry.region}" in ${offering.id}. Add regions/${entry.region}/region.toml or fix the slug.`,
+        { cause: { offeringPath, region: entry.region } },
+      );
+    }
+  }
+}
+
+function mergeBaseGpu(
+  offering: z.infer<typeof BaseGpuOffering>,
+  gpus: Record<string, GpuMetadata>,
+  offeringPath: string,
+) {
+  const base = gpus[offering.base_gpu];
   if (base === undefined) {
-    throw new Error(`Unable to resolve base_model: ${model.base_model}`, {
-      cause: { modelPath, toml: model },
+    throw new Error(`Unable to resolve base_gpu: ${offering.base_gpu}`, {
+      cause: { offeringPath, toml: offering },
     });
   }
 
-  const { base_model: _baseModel, base_model_omit: omit, ...overrides } = model;
+  const { base_gpu: _baseGpu, base_gpu_omit: omit, ...overrides } = offering;
   const merged: Record<string, unknown> = structuredClone(
-    mergeDeep(inheritableModelMetadata(base), overrides),
+    mergeDeep(inheritableGpuMetadata(base), overrides),
   );
 
   applyOmit(merged, omit ?? []);
   return merged;
 }
 
-function inheritableModelMetadata(model: ModelMetadata) {
-  const {
-    id: _id,
-    benchmarks: _benchmarks,
-    license: _license,
-    links: _links,
-    weights: _weights,
-    ...metadata
-  } = model;
+function inheritableGpuMetadata(gpu: GpuMetadata) {
+  const { id: _id, links: _links, ...metadata } = gpu;
 
   return Object.fromEntries(
     Object.entries(metadata).filter(([, value]) => value !== undefined),
@@ -225,52 +291,4 @@ function applyOmit(target: Record<string, unknown>, paths: string[]) {
       delete parent.value[parent.key];
     }
   }
-}
-
-function normalizeModelCost(model: z.infer<typeof AuthoredModel>): Model {
-  return normalizeCost(model) as Model;
-}
-
-function normalizeCost(model: Record<string, unknown>) {
-  const cost = model.cost;
-  if (cost === undefined || cost === null || typeof cost !== "object" || Array.isArray(cost)) {
-    return model;
-  }
-
-  const tiers = (cost as { tiers?: unknown }).tiers;
-  if (!Array.isArray(tiers)) {
-    return model;
-  }
-
-  if (tiers.length !== 1) {
-    return model;
-  }
-
-  const contextOver200k = tiers.find((tier) => {
-    if (tier === null || typeof tier !== "object" || Array.isArray(tier)) return false;
-    const tierConfig = (tier as { tier?: unknown }).tier;
-    if (tierConfig === null || typeof tierConfig !== "object" || Array.isArray(tierConfig)) return false;
-    const type = (tierConfig as { type?: unknown }).type;
-    const size = (tierConfig as { size?: unknown }).size;
-    // context_over_200k is a legacy compatibility field. It intentionally
-    // includes higher thresholds; cost.tiers carries the exact threshold.
-    return (
-      (type === undefined || type === "context") &&
-      typeof size === "number" &&
-      size >= 200_000
-    );
-  });
-
-  if (contextOver200k === undefined) {
-    return model;
-  }
-
-  const { tier: _tier, ...legacyCost } = contextOver200k as Record<string, unknown>;
-  return {
-    ...model,
-    cost: {
-      ...(cost as Record<string, unknown>),
-      context_over_200k: legacyCost,
-    },
-  };
 }

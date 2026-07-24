@@ -1,0 +1,17 @@
+name = "NVIDIA L40S"
+description = "Ada Lovelace datacenter GPU with 48 GB GDDR6, tuned for inference and generative AI throughput."
+architecture = "Ada Lovelace"
+vram_gb = 48
+memory_type = "GDDR6"
+memory_bandwidth_gbs = 864
+tdp_watts = 350
+interconnect = "PCIe 4.0"
+release_date = "2023-08"
+last_updated = "2026-07"
+
+[compute]
+tf32 = 183
+fp16 = 362
+bf16 = 362
+fp8 = 733
+int8 = 733

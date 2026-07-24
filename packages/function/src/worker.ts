@@ -63,48 +63,10 @@ export default {
       );
     }
 
-    if (url.pathname === "/model-schema.json") {
-      const apiUrl = new URL(url);
-      apiUrl.pathname = "/_api.json";
-      const apiResponse = await env.ASSETS.fetch(
-        new Request(apiUrl.toString(), request),
-      );
-      const providers = (await apiResponse.json()) as Record<
-        string,
-        { models: Record<string, unknown> }
-      >;
-
-      const modelIds: string[] = [];
-      for (const [providerId, provider] of Object.entries(providers)) {
-        for (const modelId of Object.keys(provider.models)) {
-          modelIds.push(`${providerId}/${modelId}`);
-        }
-      }
-
-      const schema = {
-        $schema: "https://json-schema.org/draft/2020-12/schema",
-        $id: "https://models.dev/model-schema.json",
-        $defs: {
-          Model: {
-            type: "string",
-            enum: modelIds.sort(),
-            description: "AI model identifier in provider/model format",
-          },
-        },
-      };
-
-      return new Response(JSON.stringify(schema, null, 2), {
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "public, max-age=3600",
-        },
-      });
-    }
-
     if (url.pathname === "/api.json") {
       url.pathname = "/_api.json";
-    } else if (url.pathname === "/models.json") {
-      url.pathname = "/_models.json";
+    } else if (url.pathname === "/gpus.json") {
+      url.pathname = "/_gpus.json";
     } else if (url.pathname === "/catalog.json") {
       url.pathname = "/_catalog.json";
     } else if (
@@ -145,12 +107,12 @@ export default {
 
 function isHtmlRoute(pathname: string) {
   return (
-    pathname === "/models" ||
+    pathname === "/gpus" ||
     pathname === "/providers" ||
-    pathname === "/labs" ||
-    pathname.startsWith("/models/") ||
+    pathname === "/regions" ||
+    pathname.startsWith("/gpus/") ||
     pathname.startsWith("/providers/") ||
-    pathname.startsWith("/labs/")
+    pathname.startsWith("/regions/")
   );
 }
 

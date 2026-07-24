@@ -1,0 +1,17 @@
+name = "NVIDIA A100 SXM"
+description = "Ampere datacenter GPU (80 GB SXM4), a long-serving standard for training and inference."
+architecture = "Ampere"
+vram_gb = 80
+memory_type = "HBM2e"
+memory_bandwidth_gbs = 2039
+tdp_watts = 400
+interconnect = "NVLink 3"
+release_date = "2020-11"
+last_updated = "2026-07"
+
+# Ampere has no FP8/FP4 datapath.
+[compute]
+tf32 = 156
+fp16 = 312
+bf16 = 312
+int8 = 624

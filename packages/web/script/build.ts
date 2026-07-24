@@ -1,6 +1,12 @@
 #!/usr/bin/env bun
 
-import { RenderedPages, Providers, Models, renderDocument } from "../src/render";
+import {
+  RenderedPages,
+  Providers,
+  Gpus,
+  Regions,
+  renderDocument,
+} from "../src/render";
 import fs from "fs/promises";
 import path from "path";
 
@@ -40,29 +46,6 @@ for (const entry of entries) {
   }
 }
 
-// Copy lab logos to dist/logos/labs/
-await fs.mkdir("./dist/logos/labs", { recursive: true });
-
-const labsDir = "../../labs";
-try {
-  const labEntries = await fs.readdir(labsDir, { withFileTypes: true });
-  for (const entry of labEntries) {
-    if (entry.isDirectory()) {
-      const lab = entry.name;
-      const logoPath = path.join(labsDir, lab, "logo.svg");
-      const logoFile = Bun.file(logoPath);
-
-      if (await logoFile.exists()) {
-        await Bun.write(`./dist/logos/labs/${lab}.svg`, logoFile);
-      }
-    }
-  }
-} catch (error) {
-  if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-    throw error;
-  }
-}
-
 const template = await Bun.file("./dist/index.html").text();
 
 for (const [route, rendered] of RenderedPages) {
@@ -77,12 +60,12 @@ for (const [route, rendered] of RenderedPages) {
 await Bun.write("./dist/api.json", JSON.stringify(Providers));
 await Bun.write(
   "./dist/catalog.json",
-  JSON.stringify({ models: Models, providers: Providers }),
+  JSON.stringify({ gpus: Gpus, providers: Providers, regions: Regions }),
 );
-await Bun.write("./dist/models.json", JSON.stringify(Models));
+await Bun.write("./dist/gpus.json", JSON.stringify(Gpus));
 
 await fs.rename("./dist/api.json", "./dist/_api.json");
 await fs.rename("./dist/catalog.json", "./dist/_catalog.json");
-await fs.rename("./dist/models.json", "./dist/_models.json");
+await fs.rename("./dist/gpus.json", "./dist/_gpus.json");
 
 await fs.rm("./dist/index.html", { force: true });

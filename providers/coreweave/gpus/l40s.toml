@@ -1,0 +1,21 @@
+# Source: https://www.coreweave.com/pricing (captured 2026-07).
+# On-demand price is identical across regions; spot is offered in North America only.
+base_gpu = "nvidia/l40s"
+instance = "L40S"
+gpus_per_instance = 8
+vcpus = 128
+memory_gb = 1024
+local_storage_gb = 7_680
+fabric = "Ethernet / InfiniBand (PCIe)"
+
+[cost]
+hourly = 18.00
+
+[[availability]]
+region = "us"
+provider_region = "US"
+spot_hourly = 7.88
+
+[[availability]]
+region = "eu"
+provider_region = "EU"

@@ -1,0 +1,19 @@
+# Source: https://www.coreweave.com/pricing (captured 2026-07).
+# On-demand is "Contact sales" (no listed hourly); spot pricing is published per region.
+base_gpu = "nvidia/b300"
+instance = "HGX B300"
+gpus_per_instance = 8
+vcpus = 192
+memory_gb = 4096
+local_storage_gb = 61_440
+fabric = "NVLink 5 + Quantum InfiniBand"
+
+[[availability]]
+region = "us"
+provider_region = "US"
+spot_hourly = 35.84
+
+[[availability]]
+region = "eu"
+provider_region = "EU"
+spot_hourly = 36.70

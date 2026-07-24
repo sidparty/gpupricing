@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 
-import { generate } from "../src/generate";
+import { generateCatalog } from "../src/generate";
 import path from "path";
 import { ZodError } from "zod";
 
 try {
-  const result = await generate(
-    path.join(import.meta.dirname, "..", "..", "..", "providers"),
+  const result = await generateCatalog(
+    path.join(import.meta.dirname, "..", "..", ".."),
   );
   console.log(JSON.stringify(result, null, 2));
 } catch (e: any) {
