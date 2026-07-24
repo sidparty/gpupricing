@@ -1,0 +1,16 @@
+# Source: https://nebius.com/prices (per GPU-hour, effective 2026-06-01).
+# Nebius bills per GPU-hour; vCPUs/RAM are the per-GPU allocation on an 8-GPU HGX node.
+base_gpu = "nvidia/h200-sxm"
+instance = "H200 SXM"
+gpus_per_instance = 1
+vcpus = 16
+memory_gb = 200
+fabric = "NVLink (node) + Quantum-2 InfiniBand"
+
+[cost]
+hourly = 4.50
+
+[[availability]]
+region = "eu"
+provider_region = "Finland / France"
+spot_hourly = 2.45

@@ -1,0 +1,15 @@
+# Source: https://nebius.com/prices (per GPU-hour "from" pricing, effective 2026-06-01).
+# L40S with Intel host CPU. Nebius bills per GPU-hour; vCPUs/RAM are the minimum per-GPU config.
+base_gpu = "nvidia/l40s"
+instance = "L40S (Intel host)"
+gpus_per_instance = 1
+vcpus = 16
+memory_gb = 96
+
+[cost]
+hourly = 1.82
+
+[[availability]]
+region = "eu"
+provider_region = "Finland"
+spot_hourly = 0.90

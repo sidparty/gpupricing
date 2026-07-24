@@ -1,0 +1,5 @@
+# Nebius AI Cloud. Prices are published per GPU-hour (not per node), so each
+# offering is modeled as a 1-GPU unit; vCPUs/RAM are the per-GPU allocation.
+name = "Nebius"
+doc = "https://docs.nebius.com"
+type = "neocloud"
