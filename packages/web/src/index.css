@@ -443,6 +443,63 @@ header .mobile-menu-trigger svg {
   overflow-x: auto;
 }
 
+.region-group {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.region-group:last-child {
+  border-bottom: none;
+}
+
+.region-group-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0.75rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.region-group-summary::-webkit-details-marker {
+  display: none;
+}
+
+.region-group-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.region-group-name::before {
+  content: "▸";
+  display: inline-block;
+  color: var(--color-text-tertiary);
+  transition: transform 0.15s ease;
+}
+
+.region-group[open] .region-group-name::before {
+  transform: rotate(90deg);
+}
+
+.region-group-meta {
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+  font-family: var(--font-mono);
+  text-align: right;
+}
+
+.region-group-summary:hover .region-group-name {
+  color: var(--color-brand);
+}
+
+table.region-subtable {
+  min-width: 40rem;
+}
+
 table {
   border-collapse: separate;
   border-spacing: 0;

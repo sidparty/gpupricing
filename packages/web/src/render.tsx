@@ -77,7 +77,16 @@ interface GpuEntry {
 interface RegionEntry {
   id: string;
   region: Region;
+  area: string;
   offerings: OfferingEntry[];
+  providerCount: number;
+  gpuCount: number;
+  minPricePerGpuHour?: number;
+}
+
+interface RegionAreaGroup {
+  area: string;
+  regions: RegionEntry[];
   providerCount: number;
   gpuCount: number;
   minPricePerGpuHour?: number;
@@ -114,6 +123,9 @@ const PROVIDER_TYPE_LABELS: Record<string, string> = {
   neocloud: "Neocloud",
   marketplace: "Marketplace",
 };
+
+// Preferred display order for top-level region areas on the regions page.
+const AREA_ORDER = ["US", "EU", "Middle East"];
 
 const SITE_NAME = "GPU Prices";
 const SITE_TAGLINE = "An open database of on-demand GPU cloud pricing";
@@ -321,6 +333,7 @@ function buildRegionEntries(): RegionEntry[] {
       return {
         id: slug,
         region,
+        area: region.area ?? region.name,
         offerings,
         providerCount: providers.size,
         gpuCount: gpuIds.size,
@@ -328,6 +341,52 @@ function buildRegionEntries(): RegionEntry[] {
       };
     })
     .sort((a, b) => a.region.name.localeCompare(b.region.name));
+}
+
+function groupRegionsByArea(regions: RegionEntry[]): RegionAreaGroup[] {
+  const buckets = new Map<string, RegionEntry[]>();
+  for (const region of regions) {
+    const existing = buckets.get(region.area) ?? [];
+    existing.push(region);
+    buckets.set(region.area, existing);
+  }
+
+  const groups: RegionAreaGroup[] = [...buckets.entries()].map(
+    ([area, entries]) => {
+      const providers = new Set<string>();
+      const gpuIds = new Set<string>();
+      let minPricePerGpuHour: number | undefined;
+      for (const region of entries) {
+        for (const offering of region.offerings) {
+          providers.add(offering.providerId);
+          if (offering.canonicalGpuId) gpuIds.add(offering.canonicalGpuId);
+        }
+        minPricePerGpuHour = minValue(
+          minPricePerGpuHour,
+          region.minPricePerGpuHour,
+        );
+      }
+      entries.sort((a, b) => a.region.name.localeCompare(b.region.name));
+      return {
+        area,
+        regions: entries,
+        providerCount: providers.size,
+        gpuCount: gpuIds.size,
+        minPricePerGpuHour,
+      };
+    },
+  );
+
+  return groups.sort((a, b) => {
+    const ia = AREA_ORDER.indexOf(a.area);
+    const ib = AREA_ORDER.indexOf(b.area);
+    if (ia !== -1 || ib !== -1) {
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    }
+    return a.area.localeCompare(b.area);
+  });
 }
 
 function resolveCanonicalGpuId(providerId: string, offeringId: string) {
@@ -706,48 +765,60 @@ function ProvidersPage(props: { providers: Array<[string, Provider]> }) {
 }
 
 function RegionsPage(props: { regions: RegionEntry[] }) {
+  const groups = groupRegionsByArea(props.regions);
   return (
-    <TableSection
-      title="Regions"
-      count={props.regions.length}
-      columns={5}
-      hideHeading
-    >
-      <table data-enhanced-table>
-        <thead>
-          <tr>
-            <SortableTh>Region</SortableTh>
-            <SortableTh>Location</SortableTh>
-            <SortableTh type="number">Providers</SortableTh>
-            <SortableTh type="number">GPU models</SortableTh>
-            <SortableTh type="number">Min $/GPU/hr</SortableTh>
-          </tr>
-        </thead>
-        <tbody>
-          {props.regions.map((region) => (
-            <tr
-              data-search={`${region.region.name} ${region.id} ${region.region.location}`}
-            >
-              <td data-sort={region.region.name}>
-                <a class="primary-link" href={regionHref(region.id)}>
-                  {region.region.name}
-                </a>
-                <span class="subtle mono">{region.id}</span>
-              </td>
-              <td>{region.region.location}</td>
-              <td data-sort={String(region.providerCount)}>
-                {region.providerCount}
-              </td>
-              <td data-sort={String(region.gpuCount)}>{region.gpuCount}</td>
-              <td data-sort={sortNumber(region.minPricePerGpuHour)}>
-                {formatPerGpu(region.minPricePerGpuHour)}
-              </td>
-            </tr>
-          ))}
-          <EmptyRow columns={5} />
-        </tbody>
-      </table>
-    </TableSection>
+    <section class="table-section">
+      <div class="region-groups">
+        {groups.map((group) => (
+          <details class="region-group">
+            <summary class="region-group-summary">
+              <span class="region-group-name">{group.area}</span>
+              <span class="region-group-meta">
+                {[
+                  plural(group.regions.length, "region"),
+                  plural(group.providerCount, "provider"),
+                  plural(group.gpuCount, "GPU model"),
+                  group.minPricePerGpuHour !== undefined
+                    ? `from ${formatPerGpu(group.minPricePerGpuHour)}/GPU/hr`
+                    : undefined,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            </summary>
+            <div class="table-wrap">
+              <table class="region-subtable">
+                <thead>
+                  <tr>
+                    <th scope="col">Region</th>
+                    <th scope="col">Location</th>
+                    <th scope="col">Providers</th>
+                    <th scope="col">GPU models</th>
+                    <th scope="col">Min $/GPU/hr</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.regions.map((region) => (
+                    <tr>
+                      <td>
+                        <a class="primary-link" href={regionHref(region.id)}>
+                          {region.region.name}
+                        </a>
+                        <span class="subtle mono">{region.id}</span>
+                      </td>
+                      <td>{region.region.location}</td>
+                      <td>{region.providerCount}</td>
+                      <td>{region.gpuCount}</td>
+                      <td>{formatPerGpu(region.minPricePerGpuHour)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -880,6 +951,7 @@ function RegionPage(props: { region: RegionEntry }) {
       />
       <Facts
         items={[
+          ["Area", region.area],
           ["Location", region.region.location],
           ["Providers", region.providerCount],
           ["GPU models", region.gpuCount],
