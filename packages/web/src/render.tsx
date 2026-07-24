@@ -633,7 +633,7 @@ function GpuTable(props: {
   title: string;
   hideHeading?: boolean;
 }) {
-  const columns = 11;
+  const columns = 10;
   return (
     <TableSection
       title={props.title}
@@ -649,7 +649,6 @@ function GpuTable(props: {
             <SortableTh>Architecture</SortableTh>
             <SortableTh type="number">VRAM</SortableTh>
             <SortableTh>Memory</SortableTh>
-            <SortableTh type="number">FP16 TFLOPS</SortableTh>
             <SortableTh>Interconnect</SortableTh>
             <SortableTh type="number">Providers</SortableTh>
             <SortableTh type="number">Regions</SortableTh>
@@ -660,7 +659,6 @@ function GpuTable(props: {
         <tbody>
           {props.gpus.map((gpu) => {
             const metadata = gpu.metadata;
-            const fp16 = metadata.compute?.fp16 ?? metadata.compute?.bf16;
             return (
               <tr
                 data-search={`${metadata.name} ${gpu.id} ${gpu.manufacturerName} ${metadata.architecture ?? ""} ${metadata.memory_type ?? ""} ${metadata.interconnect ?? ""}`}
@@ -681,7 +679,6 @@ function GpuTable(props: {
                 <td data-sort={metadata.memory_type ?? ""}>
                   {metadata.memory_type ?? DASH}
                 </td>
-                <td data-sort={sortNumber(fp16)}>{formatTflops(fp16)}</td>
                 <td data-sort={metadata.interconnect ?? ""}>
                   {metadata.interconnect ?? DASH}
                 </td>
