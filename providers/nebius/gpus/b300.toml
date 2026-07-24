@@ -12,6 +12,11 @@ fabric = "NVLink 5 (node) + InfiniBand"
 hourly = 7.85
 
 [[availability]]
-region = "eu"
-provider_region = "UK / France"
+region = "uk-south"
+provider_region = "United Kingdom"
+spot_hourly = 4.30
+
+[[availability]]
+region = "eu-west"
+provider_region = "France"
 spot_hourly = 4.30

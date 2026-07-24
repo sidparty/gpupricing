@@ -12,11 +12,9 @@ fabric = "NVLink + HDR InfiniBand"
 hourly = 21.60
 
 [[availability]]
-region = "us"
-provider_region = "US"
+region = "north-america"
 spot_hourly = 9.65
 
 [[availability]]
-region = "eu"
-provider_region = "EU"
+region = "europe"
 spot_hourly = 9.51

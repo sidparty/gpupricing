@@ -11,6 +11,6 @@ memory_gb = 32
 hourly = 1.55
 
 [[availability]]
-region = "eu"
+region = "eu-north"
 provider_region = "Finland"
 spot_hourly = 0.74

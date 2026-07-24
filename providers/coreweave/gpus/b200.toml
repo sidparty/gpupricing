@@ -12,11 +12,9 @@ fabric = "NVLink 5 + Quantum-2 InfiniBand"
 hourly = 68.80
 
 [[availability]]
-region = "us"
-provider_region = "US"
+region = "north-america"
 spot_hourly = 34.11
 
 [[availability]]
-region = "eu"
-provider_region = "EU"
+region = "europe"
 spot_hourly = 34.87

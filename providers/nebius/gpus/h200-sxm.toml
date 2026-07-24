@@ -12,11 +12,16 @@ fabric = "NVLink (node) + Quantum-2 InfiniBand"
 hourly = 4.50
 
 [[availability]]
-region = "eu"
-provider_region = "Finland / France / Iceland"
+region = "eu-north"
+provider_region = "Finland / Iceland"
 spot_hourly = 2.45
 
 [[availability]]
-region = "us"
-provider_region = "Kansas City, US"
+region = "eu-west"
+provider_region = "France"
+spot_hourly = 2.45
+
+[[availability]]
+region = "us-central"
+provider_region = "Kansas City"
 spot_hourly = 2.45

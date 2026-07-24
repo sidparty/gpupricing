@@ -12,9 +12,7 @@ fabric = "NVLink-C2C + InfiniBand"
 hourly = 6.50
 
 [[availability]]
-region = "us"
-provider_region = "US"
+region = "north-america"
 
 [[availability]]
-region = "eu"
-provider_region = "EU"
+region = "europe"

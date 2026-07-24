@@ -12,9 +12,7 @@ fabric = "Rack-scale NVLink + Quantum InfiniBand"
 hourly = 42.00
 
 [[availability]]
-region = "us"
-provider_region = "US"
+region = "north-america"
 
 [[availability]]
-region = "eu"
-provider_region = "EU"
+region = "europe"

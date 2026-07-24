@@ -9,11 +9,9 @@ local_storage_gb = 61_440
 fabric = "NVLink 5 + Quantum InfiniBand"
 
 [[availability]]
-region = "us"
-provider_region = "US"
+region = "north-america"
 spot_hourly = 35.84
 
 [[availability]]
-region = "eu"
-provider_region = "EU"
+region = "europe"
 spot_hourly = 36.70

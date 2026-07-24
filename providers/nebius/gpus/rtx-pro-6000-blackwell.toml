@@ -11,6 +11,6 @@ memory_gb = 218
 hourly = 1.80
 
 [[availability]]
-region = "us"
-provider_region = "Kansas City, US"
+region = "us-central"
+provider_region = "Kansas City"
 spot_hourly = 0.95

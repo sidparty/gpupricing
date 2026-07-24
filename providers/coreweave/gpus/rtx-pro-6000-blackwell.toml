@@ -12,11 +12,9 @@ fabric = "Ethernet (PCIe)"
 hourly = 20.00
 
 [[availability]]
-region = "us"
-provider_region = "US"
+region = "north-america"
 spot_hourly = 11.09
 
 [[availability]]
-region = "eu"
-provider_region = "EU"
+region = "europe"
 spot_hourly = 11.01

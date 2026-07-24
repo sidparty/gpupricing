@@ -73,15 +73,21 @@ fabric = "NVLink + Quantum-2 InfiniBand"   # cluster network fabric
 hourly = 49.24                     # per instance, USD (omit for contact-sales)
 
 [[availability]]                   # one entry per region offered
-region = "us"                      # must match a regions/<slug>
-provider_region = "US"             # native name for detail views
-spot_hourly = 19.71                # optional per-region spot price
+region = "us-central"              # must match a regions/<slug>
+provider_region = "Kansas City"    # native name for detail views
+spot_hourly = 2.15                 # optional per-region spot price
 
 [[availability]]
-region = "eu"
-provider_region = "EU"
-spot_hourly = 19.51
+region = "eu-north"
+provider_region = "Finland"
+spot_hourly = 2.15
 ```
+
+Region slugs are normalized geographic areas (`us-east`, `us-central`,
+`eu-west`, `eu-north`, `uk-south`, `ap-southeast`, …). Providers map each
+offering to the closest slug; the native data-center name goes in
+`provider_region`. Coarser providers may use continental slugs
+(`north-america`, `europe`) when they don't disclose specific locations.
 
 `base_gpu` merge semantics mirror the classic `base_model` machinery: nested
 tables (`[compute]`) are deep-merged, arrays and primitives are replaced by the
