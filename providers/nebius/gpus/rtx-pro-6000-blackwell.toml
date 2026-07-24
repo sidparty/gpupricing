@@ -1,5 +1,6 @@
 # Source: https://nebius.com/prices (per GPU-hour, effective 2026-06-01).
 # Nebius bills per GPU-hour; vCPUs/RAM are the per-GPU allocation.
+# Region availability from https://docs.nebius.com/overview/regions.
 base_gpu = "nvidia/rtx-pro-6000-blackwell"
 instance = "RTX PRO 6000"
 gpus_per_instance = 1

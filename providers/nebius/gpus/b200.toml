@@ -1,5 +1,6 @@
 # Source: https://nebius.com/prices (per GPU-hour, effective 2026-06-01).
 # Nebius bills per GPU-hour; vCPUs/RAM are the per-GPU allocation on an 8-GPU HGX node.
+# Region availability from https://docs.nebius.com/overview/regions (also offered in Israel).
 base_gpu = "nvidia/b200"
 instance = "HGX B200"
 gpus_per_instance = 1

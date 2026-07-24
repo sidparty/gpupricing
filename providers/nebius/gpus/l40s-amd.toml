@@ -1,5 +1,6 @@
 # Source: https://nebius.com/prices (per GPU-hour "from" pricing, effective 2026-06-01).
 # L40S with AMD host CPU. Nebius bills per GPU-hour; vCPUs/RAM are the minimum per-GPU config.
+# Region availability from https://docs.nebius.com/overview/regions.
 base_gpu = "nvidia/l40s"
 instance = "L40S (AMD host)"
 gpus_per_instance = 1
