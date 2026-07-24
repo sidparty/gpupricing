@@ -10,7 +10,7 @@ release_date = "2025-03"
 last_updated = "2026-07"
 
 [compute]
-tf32 = 117
+tf32 = 234
 fp16 = 500
 bf16 = 500
 fp8 = 1000

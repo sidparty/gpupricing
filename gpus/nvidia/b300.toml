@@ -1,7 +1,8 @@
 name = "NVIDIA B300"
-description = "Blackwell Ultra GPU with 288 GB HBM3e and boosted NVFP4 throughput for frontier inference."
+description = "Blackwell Ultra GPU with 270 GB HBM3e and boosted NVFP4 throughput for frontier inference."
 architecture = "Blackwell Ultra"
-vram_gb = 288
+# Usable HBM3e capacity per GPU as deployed in HGX B300 (physical package is up to 288 GB).
+vram_gb = 270
 memory_type = "HBM3e"
 memory_bandwidth_gbs = 8000
 tdp_watts = 1400
