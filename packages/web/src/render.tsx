@@ -17,7 +17,6 @@ import {
   formatTflops,
   formatVram,
   formatWatts,
-  sortDate,
   sortNumber,
   titleCase,
 } from "./shared.js";
@@ -633,7 +632,7 @@ function GpuTable(props: {
   title: string;
   hideHeading?: boolean;
 }) {
-  const columns = 10;
+  const columns = 9;
   return (
     <TableSection
       title={props.title}
@@ -653,7 +652,6 @@ function GpuTable(props: {
             <SortableTh type="number">Providers</SortableTh>
             <SortableTh type="number">Regions</SortableTh>
             <SortableTh type="number">Best $/GPU/hr</SortableTh>
-            <SortableTh>Released</SortableTh>
           </tr>
         </thead>
         <tbody>
@@ -688,9 +686,6 @@ function GpuTable(props: {
                 <td data-sort={String(gpu.regionCount)}>{gpu.regionCount}</td>
                 <td data-sort={sortNumber(gpu.minPricePerGpuHour)}>
                   {formatPerGpu(gpu.minPricePerGpuHour)}
-                </td>
-                <td data-sort={sortDate(metadata.release_date)}>
-                  {metadata.release_date ?? DASH}
                 </td>
               </tr>
             );
@@ -788,7 +783,6 @@ function RegionsPage(props: { regions: RegionEntry[] }) {
                 <thead>
                   <tr>
                     <th scope="col">Region</th>
-                    <th scope="col">Location</th>
                     <th scope="col">Providers</th>
                     <th scope="col">GPU models</th>
                     <th scope="col">Min $/GPU/hr</th>
@@ -803,7 +797,6 @@ function RegionsPage(props: { regions: RegionEntry[] }) {
                         </a>
                         <span class="subtle mono">{region.id}</span>
                       </td>
-                      <td>{region.region.location}</td>
                       <td>{region.providerCount}</td>
                       <td>{region.gpuCount}</td>
                       <td>{formatPerGpu(region.minPricePerGpuHour)}</td>
