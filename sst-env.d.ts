@@ -4,23 +4,7 @@
 /* deno-fmt-ignore-file */
 
 import "sst"
-declare module "sst" {
-  export interface Resource {
-    "LakeSecret": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "LakeUrl": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "PosthogToken": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-  }
-}
-// cloudflare 
+// cloudflare
 import * as cloudflare from "@cloudflare/workers-types";
 declare module "sst" {
   export interface Resource {

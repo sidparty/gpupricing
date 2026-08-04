@@ -301,7 +301,6 @@ function resultMeta(item: SearchIndexItem) {
 }
 
 function resultSubtitle(item: SearchIndexItem) {
-  if (item.type === "model") return item.id;
   if (item.type === "provider") return item.id;
   return item.id;
 }
