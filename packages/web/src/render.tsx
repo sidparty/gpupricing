@@ -124,7 +124,14 @@ const PROVIDER_TYPE_LABELS: Record<string, string> = {
 };
 
 // Preferred display order for top-level region areas on the regions page.
-const AREA_ORDER = ["US", "EU", "Middle East"];
+const AREA_ORDER = [
+  "North America",
+  "Europe",
+  "Asia Pacific",
+  "Middle East",
+  "South America",
+  "Africa",
+];
 
 const SITE_NAME = "GPU Prices";
 const SITE_TAGLINE = "An open database of on-demand GPU cloud pricing";
@@ -611,7 +618,7 @@ function regionPageMetadata(region: RegionEntry): PageMetadata {
   const title = `GPU pricing in ${region.region.name} | ${SITE_NAME}`;
   const description = compact(
     [
-      `On-demand GPU instances available in ${region.region.name} (${region.region.location}).`,
+      `On-demand GPU instances available in ${region.region.name}${region.region.location ? ` (${region.region.location})` : ""}.`,
       `${plural(region.providerCount, "provider")}, ${plural(region.gpuCount, "GPU model")}${
         region.minPricePerGpuHour !== undefined
           ? `, from ${formatPerGpu(region.minPricePerGpuHour)}/GPU/hr`

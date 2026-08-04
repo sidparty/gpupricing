@@ -148,8 +148,8 @@ export const Region = z
   .object({
     id: z.string(),
     name: z.string().min(1, "Region name cannot be empty"),
-    location: z.string().min(1, "Region location cannot be empty"),
-    // Top-level grouping bucket for the regions view, e.g. "US", "EU", "Middle East".
+    location: z.string().min(1, "Region location cannot be empty").optional(),
+    // Top-level grouping bucket for the regions view, e.g. "North America", "Europe".
     area: z.string().min(1, "Region area cannot be empty").optional(),
   })
   .strict();
