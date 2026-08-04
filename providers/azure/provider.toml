@@ -1,0 +1,4 @@
+name = "Microsoft Azure"
+doc = "https://azure.microsoft.com/en-us/pricing/details/virtual-machines/"
+type = "cloud"
+api = "https://prices.azure.com/api/retail/prices"

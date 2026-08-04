@@ -4,6 +4,24 @@
 - **Validate**: `bun validate` — validates all GPU / offering / region / provider TOML and cross-references.
 - **Build web**: `cd packages/web && bun run build` — builds the static site + JSON API into `dist/`.
 - **Dev server**: `cd packages/web && bun run dev` — runs the dev server at http://localhost:3000.
+- **Sync Azure prices**: `bun run azure:sync` — regenerates `providers/azure/` from the live Azure Retail Prices API, then run `bun validate`.
+
+## Automated price sync
+
+Providers with a public pricing API are populated by a sync module rather than
+hand-authored. **Azure is the reference implementation:**
+
+- Logic lives in `packages/core/src/sync/azure.ts` (fetches the no-auth Azure
+  Retail Prices API and normalizes it); the runner
+  `packages/core/script/sync-azure.ts` regenerates `providers/azure/gpus/*.toml`
+  (marked `# AUTO-SYNCED` — never hand-edit), creates any missing
+  `regions/<slug>`, and leaves `provider.toml`/`logo.svg` alone once created.
+- Two curated tables keep it honest: an **instance→GPU map** (which VM SKU is
+  which GPU, and how many) and an **Azure-region→slug map**. Prices always come
+  live from the API; extend the maps to add SKUs/regions.
+- Prices vary by region, so each offering carries one `[[availability]]` entry
+  per region (cheapest Azure region per slug) with the native code in
+  `provider_region`.
 
 ## Code Style
 - **Runtime**: Bun with TypeScript ESM modules.
