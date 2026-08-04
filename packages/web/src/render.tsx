@@ -935,14 +935,12 @@ function RegionPage(props: { region: RegionEntry }) {
       <DetailHeader
         eyebrow={<a href="/regions">Regions</a>}
         title={region.region.name}
-        description={region.region.location}
         code={region.id}
         copyValue={region.id}
       />
       <Facts
         items={[
           ["Area", region.area],
-          ["Location", region.region.location],
           ["Providers", region.providerCount],
           ["GPU models", region.gpuCount],
           ["Instances", region.offerings.length],
