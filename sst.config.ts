@@ -3,7 +3,7 @@
 export default $config({
   app() {
     return {
-      name: "models-dev",
+      name: "gpupricing",
       home: "cloudflare",
     };
   },
@@ -18,7 +18,7 @@ export default $config({
 
     const worker = new sst.cloudflare.Worker("Server", {
       url: true,
-      domain: $app.stage === "dev" ? "models.dev" : undefined,
+      domain: $app.stage === "dev" ? "gpu.sidharth.party" : undefined,
       handler: "./packages/function/src/worker.ts",
       assets: {
         directory: "./packages/web/dist",
