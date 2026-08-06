@@ -224,8 +224,20 @@ function buildGpuEntries() {
 }
 
 function resolvePricing(offering: GpuOffering, regionSlug?: string): Pricing {
+  // A slug can cover several of a provider's native regions (e.g. Azure's
+  // eastus and eastus2 both sit in us-east); price the cheapest of them.
   const entry = regionSlug
-    ? offering.availability.find((a) => a.region === regionSlug)
+    ? offering.availability
+        .filter((a) => a.region === regionSlug)
+        .reduce<GpuOffering["availability"][number] | undefined>(
+          (best, candidate) => {
+            if (best === undefined) return candidate;
+            const bestPrice = best.hourly ?? offering.cost?.hourly ?? Infinity;
+            const price = candidate.hourly ?? offering.cost?.hourly ?? Infinity;
+            return price < bestPrice ? candidate : best;
+          },
+          undefined,
+        )
     : undefined;
 
   const hourly =
@@ -311,7 +323,9 @@ function buildRegionEntries(): RegionEntry[] {
   const buckets = new Map<string, OfferingEntry[]>();
   for (const slug of Object.keys(Regions)) buckets.set(slug, []);
   for (const offering of OfferingEntries) {
-    for (const slug of offering.regionSlugs) {
+    // regionSlugs can repeat when a provider has several native regions in one
+    // slug; the offering should still be listed once per region.
+    for (const slug of new Set(offering.regionSlugs)) {
       if (!buckets.has(slug)) buckets.set(slug, []);
       buckets.get(slug)!.push(offering);
     }
@@ -963,6 +977,7 @@ function RegionPage(props: { region: RegionEntry }) {
           offerings={region.offerings}
           mode="by-provider"
           regionSlug={region.id}
+          splitByRegion
         />
       </TableSection>
     </Fragment>
@@ -982,13 +997,19 @@ function OfferingTable(props: {
   const columns = 15;
 
   // In split mode each offering expands to one row per region it's available in.
+  // In split mode each offering expands to one row per region it's available
+  // in — scoped to a single slug on a region page, where a provider may have
+  // several native regions (e.g. Azure eastus and eastus2 in us-east).
   const rows: Array<{ entry: OfferingEntry; availability?: AvailabilityEntry }> =
     split
       ? props.offerings.flatMap((entry) =>
-          entry.offering.availability.map((availability) => ({
-            entry,
-            availability,
-          })),
+          entry.offering.availability
+            .filter(
+              (availability) =>
+                props.regionSlug === undefined ||
+                availability.region === props.regionSlug,
+            )
+            .map((availability) => ({ entry, availability })),
         )
       : props.offerings.map((entry) => ({ entry }));
 
