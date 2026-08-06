@@ -1,0 +1,112 @@
+# AUTO-SYNCED from the Azure Retail Prices API (prices.azure.com) on 2026-08.
+# Instance->GPU mapping is curated in packages/core/src/sync/azure.ts; do not edit here.
+base_gpu = "amd/mi300x"
+instance = "ND96isr MI300X v5"
+gpus_per_instance = 8
+vcpus = 96
+memory_gb = 1850
+local_storage_gb = 28000
+fabric = "Infinity Fabric + Quantum-2 NDR InfiniBand"
+last_updated = "2026-08"
+
+[[availability]]
+region = "ap-northeast"
+provider_region = "koreasouth"
+hourly = 60
+spot_hourly = 11.088
+
+[[availability]]
+region = "au-east"
+provider_region = "australiasoutheast"
+hourly = 67.2
+spot_hourly = 12.4186
+
+[[availability]]
+region = "ca-central"
+provider_region = "canadacentral"
+hourly = 57.6
+spot_hourly = 10.6445
+
+[[availability]]
+region = "eu-central"
+provider_region = "germanywestcentral"
+hourly = 62.4
+spot_hourly = 11.5315
+
+[[availability]]
+region = "eu-central"
+provider_region = "polandcentral"
+hourly = 73.92
+spot_hourly = 13.6604
+
+[[availability]]
+region = "eu-north"
+provider_region = "swedencentral"
+hourly = 67.2
+spot_hourly = 12.4186
+
+[[availability]]
+region = "eu-west"
+provider_region = "francecentral"
+hourly = 60
+spot_hourly = 11.088
+
+[[availability]]
+region = "eu-west"
+provider_region = "northeurope"
+hourly = 57.6
+spot_hourly = 10.6445
+
+[[availability]]
+region = "me-central"
+provider_region = "uaenorth"
+hourly = 68.64
+spot_hourly = 12.6847
+
+[[availability]]
+region = "sa-east"
+provider_region = "brazilsouth"
+hourly = 96
+spot_hourly = 17.7408
+
+[[availability]]
+region = "uk-south"
+provider_region = "uksouth"
+hourly = 60
+spot_hourly = 11.088
+
+[[availability]]
+region = "us-central"
+provider_region = "centralus"
+hourly = 59.041
+spot_hourly = 10.9108
+
+[[availability]]
+region = "us-central"
+provider_region = "northcentralus"
+hourly = 57.6
+spot_hourly = 10.6445
+
+[[availability]]
+region = "us-east"
+provider_region = "eastus2"
+hourly = 48
+spot_hourly = 8.8704
+
+[[availability]]
+region = "us-west"
+provider_region = "westcentralus"
+hourly = 57.6
+spot_hourly = 10.6445
+
+[[availability]]
+region = "us-west"
+provider_region = "westus"
+hourly = 62.853
+spot_hourly = 11.6152
+
+[[availability]]
+region = "us-west"
+provider_region = "westus3"
+hourly = 48
+spot_hourly = 8.8704

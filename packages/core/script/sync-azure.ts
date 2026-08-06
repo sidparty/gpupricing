@@ -43,9 +43,12 @@ function offeringToml(offering: AzureOffering): string {
   lines.push(`base_gpu = ${tomlString(offering.baseGpu)}`);
   lines.push(`instance = ${tomlString(offering.instance)}`);
   lines.push(`gpus_per_instance = ${offering.gpusPerInstance}`);
+  if (offering.vramGb !== undefined) lines.push(`vram_gb = ${offering.vramGb}`);
   if (offering.vcpus !== undefined) lines.push(`vcpus = ${offering.vcpus}`);
   if (offering.memoryGb !== undefined)
     lines.push(`memory_gb = ${offering.memoryGb}`);
+  if (offering.localStorageGb !== undefined)
+    lines.push(`local_storage_gb = ${offering.localStorageGb}`);
   if (offering.fabric !== undefined)
     lines.push(`fabric = ${tomlString(offering.fabric)}`);
   lines.push(`last_updated = ${tomlString(stamp)}`);

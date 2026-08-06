@@ -1,0 +1,40 @@
+# AUTO-SYNCED from the Azure Retail Prices API (prices.azure.com) on 2026-08.
+# Instance->GPU mapping is curated in packages/core/src/sync/azure.ts; do not edit here.
+base_gpu = "nvidia/a100-40gb"
+instance = "ND96asr A100 v4"
+gpus_per_instance = 8
+vcpus = 96
+memory_gb = 900
+local_storage_gb = 6000
+fabric = "NVLink 3 + HDR InfiniBand"
+last_updated = "2026-08"
+
+[[availability]]
+region = "eu-central"
+provider_region = "italynorth"
+hourly = 35.357
+spot_hourly = 7.7785
+
+[[availability]]
+region = "eu-west"
+provider_region = "westeurope"
+hourly = 35.357
+spot_hourly = 7.7785
+
+[[availability]]
+region = "us-central"
+provider_region = "southcentralus"
+hourly = 32.63
+spot_hourly = 7.1786
+
+[[availability]]
+region = "us-east"
+provider_region = "eastus"
+hourly = 27.197
+spot_hourly = 5.9833
+
+[[availability]]
+region = "us-west"
+provider_region = "westus2"
+hourly = 27.197
+spot_hourly = 5.9833

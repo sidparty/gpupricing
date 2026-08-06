@@ -17,11 +17,20 @@ hand-authored. **Azure is the reference implementation:**
   (marked `# AUTO-SYNCED` — never hand-edit), creates any missing
   `regions/<slug>`, and leaves `provider.toml`/`logo.svg` alone once created.
 - Two curated tables keep it honest: an **instance→GPU map** (which VM SKU is
-  which GPU, and how many) and an **Azure-region→slug map**. Prices always come
-  live from the API; extend the maps to add SKUs/regions.
-- Prices vary by region, so each offering carries one `[[availability]]` entry
-  per region (cheapest Azure region per slug) with the native code in
-  `provider_region`.
+  which GPU, and how many — sourced from Microsoft Learn VM-size docs) and an
+  **Azure-region→slug map**. Prices always come live from the API; extend the
+  maps to add SKUs/regions. The API does **not** publish GPU count, vCPU or RAM
+  — never invent them, since a wrong `gpus_per_instance` corrupts every
+  `$/GPU/hr` on the site.
+- All Azure GPU VMs are N-series, so `startswith(armSkuName,'Standard_N')` acts
+  as the GPU filter (the API has no category field).
+- **Every** Azure region an offering sells in gets its own `[[availability]]`
+  entry with the native code in `provider_region`. Several native regions can
+  share one slug (`eastus` and `eastus2` are both `us-east`) and each keeps its
+  own price — do not collapse them, or regions silently disappear from the site.
+- Deliberately excluded: undocumented `f`/`flex` capacity-pool variants that
+  duplicate a documented SKU at an identical price, re-metered aliases, and
+  non-GPU N-series (FPGA `NP`, media-accelerator `NM`) sizes.
 
 ## Code Style
 - **Runtime**: Bun with TypeScript ESM modules.

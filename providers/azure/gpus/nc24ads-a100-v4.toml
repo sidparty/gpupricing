@@ -1,155 +1,159 @@
 # AUTO-SYNCED from the Azure Retail Prices API (prices.azure.com) on 2026-08.
 # Instance->GPU mapping is curated in packages/core/src/sync/azure.ts; do not edit here.
-base_gpu = "nvidia/h200-sxm"
-instance = "ND96isr H200 v5"
-gpus_per_instance = 8
-vcpus = 96
-memory_gb = 1850
-local_storage_gb = 28000
-fabric = "NVLink 4 + Quantum-2 NDR InfiniBand"
+base_gpu = "nvidia/a100-pcie"
+instance = "NC24ads A100 v4"
+gpus_per_instance = 1
+vcpus = 24
+memory_gb = 220
+local_storage_gb = 958
 last_updated = "2026-08"
-
-[[availability]]
-region = "af-south"
-provider_region = "southafricanorth"
-hourly = 123.808
 
 [[availability]]
 region = "ap-northeast"
 provider_region = "japaneast"
-hourly = 106
+hourly = 5.326
+spot_hourly = 0.9842
 
 [[availability]]
 region = "ap-northeast"
-provider_region = "japanwest"
-hourly = 131.44
+provider_region = "koreacentral"
+hourly = 4.959
+spot_hourly = 0.9164
 
 [[availability]]
-region = "ap-northeast"
-provider_region = "koreasouth"
-hourly = 106
-
-[[availability]]
-region = "ap-southeast"
-provider_region = "indonesiacentral"
-hourly = 99.216
-
-[[availability]]
-region = "ap-southeast"
-provider_region = "malaysiawest"
-hourly = 99.216
+region = "ap-south"
+provider_region = "centralindia"
+hourly = 5.142
+spot_hourly = 0.9502
 
 [[availability]]
 region = "ap-southeast"
 provider_region = "southeastasia"
-hourly = 110.24
+hourly = 4.775
+spot_hourly = 0.8824
 
 [[availability]]
 region = "au-east"
 provider_region = "australiaeast"
-hourly = 122.96
+hourly = 5.326
+spot_hourly = 0.9842
 
 [[availability]]
-region = "au-east"
-provider_region = "australiasoutheast"
-hourly = 110.24
+region = "ca-central"
+provider_region = "canadacentral"
+hourly = 4.408
+spot_hourly = 0.8146
 
 [[availability]]
 region = "eu-central"
 provider_region = "germanywestcentral"
-hourly = 110.24
+hourly = 4.775
+spot_hourly = 0.8824
 
 [[availability]]
 region = "eu-central"
 provider_region = "italynorth"
-hourly = 110.24
+hourly = 4.775
+spot_hourly = 0.8824
 
 [[availability]]
 region = "eu-central"
 provider_region = "polandcentral"
-hourly = 130.592
+hourly = 4.775
+spot_hourly = 0.8824
 
 [[availability]]
-region = "eu-north"
-provider_region = "norwayeast"
-hourly = 121.264
+region = "eu-central"
+provider_region = "switzerlandnorth"
+hourly = 5.252
+spot_hourly = 0.9706
 
 [[availability]]
 region = "eu-north"
 provider_region = "swedencentral"
-hourly = 110.272
+hourly = 4.775
+spot_hourly = 1.4645
 
 [[availability]]
 region = "eu-west"
 provider_region = "francecentral"
-hourly = 106
+hourly = 4.591
+spot_hourly = 0.8484
 
 [[availability]]
 region = "eu-west"
 provider_region = "northeurope"
-hourly = 101.76
+hourly = 4.408
+spot_hourly = 0.8146
 
 [[availability]]
 region = "eu-west"
 provider_region = "spaincentral"
-hourly = 110.24
+hourly = 4.775
+spot_hourly = 0.8824
 
 [[availability]]
-region = "me-central"
-provider_region = "uaenorth"
-hourly = 121.264
-
-[[availability]]
-region = "mx-central"
-provider_region = "mexicocentral"
-hourly = 93.28
+region = "eu-west"
+provider_region = "westeurope"
+hourly = 4.775
+spot_hourly = 1.0973
 
 [[availability]]
 region = "sa-east"
 provider_region = "brazilsouth"
-hourly = 169.6
+hourly = 7.346
+spot_hourly = 1.3575
 
 [[availability]]
 region = "uk-south"
 provider_region = "uksouth"
-hourly = 106
-
-[[availability]]
-region = "uk-south"
-provider_region = "ukwest"
-hourly = 111.088
+hourly = 4.591
+spot_hourly = 0.8484
 
 [[availability]]
 region = "us-central"
 provider_region = "centralus"
-hourly = 95.824
+hourly = 4.15
+spot_hourly = 0.7669
 
 [[availability]]
 region = "us-central"
 provider_region = "northcentralus"
-hourly = 101.76
+hourly = 4.408
+spot_hourly = 0.8146
 
 [[availability]]
 region = "us-central"
-provider_region = "southcentralus2"
-hourly = 93.28
+provider_region = "southcentralus"
+hourly = 4.408
+spot_hourly = 0.8146
+
+[[availability]]
+region = "us-east"
+provider_region = "eastus"
+hourly = 3.673
+spot_hourly = 0.6788
 
 [[availability]]
 region = "us-east"
 provider_region = "eastus2"
-hourly = 84.8
+hourly = 3.673
+spot_hourly = 0.6788
 
 [[availability]]
 region = "us-west"
 provider_region = "westus"
-hourly = 110.24
+hourly = 4.775
+spot_hourly = 0.8824
 
 [[availability]]
 region = "us-west"
 provider_region = "westus2"
-hourly = 84.8
+hourly = 3.673
+spot_hourly = 0.6788
 
 [[availability]]
 region = "us-west"
 provider_region = "westus3"
-hourly = 84.8
+hourly = 3.673
+spot_hourly = 0.7284

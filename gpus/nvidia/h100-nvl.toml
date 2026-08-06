@@ -1,0 +1,21 @@
+name = "NVIDIA H100 NVL 94GB"
+description = "Hopper GPU with 94 GB HBM3 in a PCIe/NVL card; its own clock bin, slower than H100 SXM."
+architecture = "Hopper"
+vram_gb = 94
+memory_type = "HBM3"
+memory_bandwidth_gbs = 3900
+tdp_watts = 400
+interconnect = "NVLink 4"
+release_date = "2023-03"
+last_updated = "2026-08"
+
+# Dense (non-sparse) peak tensor throughput; INT8 in TOPS.
+# NOT the same as H100 SXM (dense fp16 989) — NVIDIA's H100 NVL datasheet gives
+# 1,671 fp16 with sparsity, so 835.5 dense. Some third-party pages wrongly
+# repeat the SXM figures for this part.
+[compute]
+tf32 = 417.5
+fp16 = 835.5
+bf16 = 835.5
+fp8 = 1670.5
+int8 = 1670.5

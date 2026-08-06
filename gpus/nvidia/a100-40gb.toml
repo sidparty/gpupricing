@@ -1,0 +1,18 @@
+name = "NVIDIA A100 40GB SXM"
+description = "The original 40 GB Ampere SXM4 module; HBM2 rather than the 80 GB part's HBM2e."
+architecture = "Ampere"
+vram_gb = 40
+memory_type = "HBM2"
+memory_bandwidth_gbs = 1555
+tdp_watts = 400
+interconnect = "NVLink 3"
+release_date = "2020-05"
+last_updated = "2026-08"
+
+# Dense (non-sparse) peak tensor throughput; INT8 in TOPS.
+# Compute is identical across all A100 SKUs; only memory and TDP differ.
+[compute]
+tf32 = 156
+fp16 = 312
+bf16 = 312
+int8 = 624

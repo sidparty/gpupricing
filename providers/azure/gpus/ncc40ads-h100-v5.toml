@@ -1,0 +1,33 @@
+# AUTO-SYNCED from the Azure Retail Prices API (prices.azure.com) on 2026-08.
+# Instance->GPU mapping is curated in packages/core/src/sync/azure.ts; do not edit here.
+base_gpu = "nvidia/h100-nvl"
+instance = "NCC40ads H100 v5 (confidential)"
+gpus_per_instance = 1
+vcpus = 40
+memory_gb = 320
+local_storage_gb = 800
+last_updated = "2026-08"
+
+[[availability]]
+region = "eu-west"
+provider_region = "westeurope"
+hourly = 10.74
+spot_hourly = 1.6447
+
+[[availability]]
+region = "us-central"
+provider_region = "centralus"
+hourly = 7.89
+spot_hourly = 1.4581
+
+[[availability]]
+region = "us-central"
+provider_region = "southcentralus"
+hourly = 9.73
+spot_hourly = 1.4581
+
+[[availability]]
+region = "us-east"
+provider_region = "eastus2"
+hourly = 6.98
+spot_hourly = 1.2899

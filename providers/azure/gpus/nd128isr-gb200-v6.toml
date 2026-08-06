@@ -1,0 +1,106 @@
+# AUTO-SYNCED from the Azure Retail Prices API (prices.azure.com) on 2026-08.
+# Instance->GPU mapping is curated in packages/core/src/sync/azure.ts; do not edit here.
+base_gpu = "nvidia/gb200-nvl72"
+instance = "ND128isr GB200 v6"
+gpus_per_instance = 4
+vram_gb = 192
+vcpus = 128
+memory_gb = 900
+local_storage_gb = 16000
+fabric = "Rack-scale NVLink 5 + Quantum-2 NDR InfiniBand"
+last_updated = "2026-08"
+
+[[availability]]
+region = "ap-northeast"
+provider_region = "koreacentral"
+hourly = 146
+
+[[availability]]
+region = "ap-northeast"
+provider_region = "koreasouth"
+hourly = 124.4
+
+[[availability]]
+region = "ap-south"
+provider_region = "southindia"
+hourly = 163.32
+
+[[availability]]
+region = "ap-southeast"
+provider_region = "indonesiacentral"
+hourly = 126.54
+
+[[availability]]
+region = "au-east"
+provider_region = "australiaeast"
+hourly = 156.84
+
+[[availability]]
+region = "au-east"
+provider_region = "australiasoutheast"
+hourly = 151.44
+
+[[availability]]
+region = "ca-central"
+provider_region = "canadaeast"
+hourly = 129.8
+
+[[availability]]
+region = "eu-central"
+provider_region = "germanywestcentral"
+hourly = 140.6
+
+[[availability]]
+region = "eu-central"
+provider_region = "italynorth"
+hourly = 140.6
+
+[[availability]]
+region = "eu-west"
+provider_region = "spaincentral"
+hourly = 140.6
+
+[[availability]]
+region = "me-central"
+provider_region = "uaecentral"
+hourly = 201.16
+
+[[availability]]
+region = "sa-east"
+provider_region = "brazilsouth"
+hourly = 216.32
+
+[[availability]]
+region = "uk-south"
+provider_region = "uksouth"
+hourly = 135.2
+
+[[availability]]
+region = "us-central"
+provider_region = "centralus"
+hourly = 133.037
+
+[[availability]]
+region = "us-central"
+provider_region = "northcentralus"
+hourly = 129.8
+
+[[availability]]
+region = "us-east"
+provider_region = "eastus"
+hourly = 108.16
+
+[[availability]]
+region = "us-east"
+provider_region = "eastus2"
+hourly = 108.16
+
+[[availability]]
+region = "us-west"
+provider_region = "westus2"
+hourly = 108.16
+
+[[availability]]
+region = "us-west"
+provider_region = "westus3"
+hourly = 108.16
