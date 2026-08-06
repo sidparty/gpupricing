@@ -73,6 +73,28 @@ export function formatStorage(gb?: number) {
   return `${formatNumber(gb)} GB`;
 }
 
+/**
+ * GPUs per instance. Partitioned GPUs read better as the fraction the cloud
+ * documents ("1/6 of an A10") than as 0.1667.
+ */
+const GPU_FRACTIONS: Array<[number, string]> = [
+  [1 / 6, "1/6"],
+  [1 / 4, "1/4"],
+  [1 / 3, "1/3"],
+  [1 / 2, "1/2"],
+  [2 / 3, "2/3"],
+  [3 / 4, "3/4"],
+];
+
+export function formatGpuCount(value?: number) {
+  if (value === undefined) return DASH;
+  if (Number.isInteger(value)) return String(value);
+  for (const [fraction, label] of GPU_FRACTIONS) {
+    if (Math.abs(value - fraction) < 0.005) return label;
+  }
+  return String(Math.round(value * 100) / 100);
+}
+
 export function titleCase(value: string) {
   return value
     .split(/[\s-]+/)

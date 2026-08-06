@@ -123,10 +123,12 @@ export const GpuOffering = z
     links: z.array(GpuLink).optional(),
     // Offering-specific instance shape.
     instance: z.string().min(1, "Instance name cannot be empty"),
+    // Fractional values are legitimate: clouds sell partitioned GPUs (Azure's
+    // NVadsA10v5 starts at 1/6 of an A10). $/GPU/hr divides by this, so a
+    // 0.25-GPU instance correctly prices at 4x its hourly rate.
     gpus_per_instance: z
       .number()
-      .int("GPUs per instance must be an integer")
-      .min(1, "An instance must have at least one GPU"),
+      .positive("GPUs per instance must be greater than zero"),
     vcpus: z.number().min(0, "vCPUs cannot be negative").optional(),
     memory_gb: z.number().min(0, "System memory cannot be negative").optional(),
     local_storage_gb: z

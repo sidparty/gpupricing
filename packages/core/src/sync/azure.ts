@@ -75,12 +75,14 @@ export interface AzureSyncResult {
  *  - Standard_ND96asr_A100_v4: a re-metered alias of Standard_ND96asr_v4 at an
  *    identical price.
  *  - FPGA (NP) and media-accelerator (NM) sizes: not GPUs.
- *  - Fractional-GPU sizes, because gpus_per_instance must be a whole number:
- *    NVadsA10v5 NV6/NV12/NV18 (1/6, 1/3, 1/2 of an A10) and the RTX PRO 6000 v6
- *    sizes at 0.25 and 0.5 GPU (NC24/NC36/NC72). Their whole-GPU siblings are
- *    included.
+ *  - RTX PRO 6000 v6 sizes absent from Azure's pricing-calculator feed
+ *    (NC8/16/32/64/128/132/256/264/320/324): no published spec to verify GPU
+ *    count against.
  *  - NCads A10 v4 (NC8/16/32ads_A10_v4): Microsoft publishes no size page for
  *    this series, so GPU count is unverifiable.
+ *
+ * Partitioned GPUs are included with a fractional gpusPerInstance (Azure sells
+ * 1/6, 1/3 and 1/2 of an A10, and 0.25/0.5 of an RTX PRO 6000).
  */
 const INSTANCES: AzureInstance[] = [
   // --- NVIDIA A100 80GB PCIe (NC A100 v4) ---
@@ -279,7 +281,37 @@ const INSTANCES: AzureInstance[] = [
     memoryGb: 440,
     localStorageGb: 2816,
   },
-  // --- NVIDIA A10 (NVads A10 v5) — whole-GPU sizes only ---
+  // --- NVIDIA A10 (NVads A10 v5) — partitioned and whole GPUs ---
+  {
+    armSkuName: "Standard_NV6ads_A10_v5",
+    id: "nv6ads-a10-v5",
+    instance: "NV6ads A10 v5",
+    baseGpu: "nvidia/a10",
+    gpusPerInstance: 1 / 6,
+    vcpus: 6,
+    memoryGb: 55,
+    localStorageGb: 180,
+  },
+  {
+    armSkuName: "Standard_NV12ads_A10_v5",
+    id: "nv12ads-a10-v5",
+    instance: "NV12ads A10 v5",
+    baseGpu: "nvidia/a10",
+    gpusPerInstance: 1 / 3,
+    vcpus: 12,
+    memoryGb: 110,
+    localStorageGb: 360,
+  },
+  {
+    armSkuName: "Standard_NV18ads_A10_v5",
+    id: "nv18ads-a10-v5",
+    instance: "NV18ads A10 v5",
+    baseGpu: "nvidia/a10",
+    gpusPerInstance: 0.5,
+    vcpus: 18,
+    memoryGb: 220,
+    localStorageGb: 720,
+  },
   {
     armSkuName: "Standard_NV36ads_A10_v5",
     id: "nv36ads-a10-v5",
@@ -310,7 +342,61 @@ const INSTANCES: AzureInstance[] = [
     memoryGb: 880,
     localStorageGb: 2880,
   },
-  // --- NVIDIA RTX PRO 6000 Blackwell SE (NC v6) — whole-GPU sizes only ---
+  // --- NVIDIA RTX PRO 6000 Blackwell SE (NC v6) — partitioned and whole GPUs.
+  // Specs from Azure's pricing-calculator feed; Learn has no page for this
+  // family yet, so only the sizes that feed publishes are listed. ---
+  {
+    armSkuName: "Standard_NC24lds_xl_RTXPRO6000BSE_v6",
+    id: "nc24lds-rtxpro6000-v6",
+    instance: "NC24lds xl RTX PRO 6000 v6",
+    baseGpu: "nvidia/rtx-pro-6000-blackwell",
+    gpusPerInstance: 0.25,
+    vcpus: 24,
+    memoryGb: 72,
+    localStorageGb: 256,
+  },
+  {
+    armSkuName: "Standard_NC36ds_xl_RTXPRO6000BSE_v6",
+    id: "nc36ds-rtxpro6000-v6",
+    instance: "NC36ds xl RTX PRO 6000 v6",
+    baseGpu: "nvidia/rtx-pro-6000-blackwell",
+    gpusPerInstance: 0.25,
+    vcpus: 36,
+    memoryGb: 132,
+    localStorageGb: 256,
+  },
+  {
+    armSkuName: "Standard_NC36lds_xl_RTXPRO6000BSE_v6",
+    id: "nc36lds-rtxpro6000-v6",
+    instance: "NC36lds xl RTX PRO 6000 v6",
+    baseGpu: "nvidia/rtx-pro-6000-blackwell",
+    gpusPerInstance: 0.25,
+    vcpus: 36,
+    memoryGb: 72,
+    localStorageGb: 256,
+  },
+  {
+    armSkuName: "Standard_NC72ds_xl_RTXPRO6000BSE_v6",
+    id: "nc72ds-rtxpro6000-v6",
+    instance: "NC72ds xl RTX PRO 6000 v6",
+    baseGpu: "nvidia/rtx-pro-6000-blackwell",
+    gpusPerInstance: 0.5,
+    vcpus: 72,
+    memoryGb: 264,
+    localStorageGb: 512,
+  },
+  {
+    armSkuName: "Standard_NC72lds_xl_RTXPRO6000BSE_v6",
+    id: "nc72lds-rtxpro6000-v6",
+    instance: "NC72lds xl RTX PRO 6000 v6",
+    baseGpu: "nvidia/rtx-pro-6000-blackwell",
+    gpusPerInstance: 0.5,
+    vcpus: 72,
+    // The Linux calculator row reports 264 GiB, but every other lds size is
+    // half its ds sibling (and the Windows row agrees at 132).
+    memoryGb: 132,
+    localStorageGb: 512,
+  },
   {
     armSkuName: "Standard_NC144ds_xl_RTXPRO6000BSE_v6",
     id: "nc144ds-rtxpro6000-v6",

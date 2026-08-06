@@ -1,0 +1,93 @@
+# AUTO-SYNCED from the Azure Retail Prices API (prices.azure.com) on 2026-08.
+# Instance->GPU mapping is curated in packages/core/src/sync/azure.ts; do not edit here.
+base_gpu = "nvidia/rtx-pro-6000-blackwell"
+instance = "NC24lds xl RTX PRO 6000 v6"
+gpus_per_instance = 0.25
+vcpus = 24
+memory_gb = 72
+local_storage_gb = 256
+last_updated = "2026-08"
+
+[[availability]]
+region = "ap-northeast"
+provider_region = "japaneast"
+hourly = 1.64
+spot_hourly = 0.3031
+
+[[availability]]
+region = "ap-northeast"
+provider_region = "koreacentral"
+hourly = 1.527
+spot_hourly = 0.2822
+
+[[availability]]
+region = "ap-southeast"
+provider_region = "southeastasia"
+hourly = 1.582
+spot_hourly = 0.2924
+
+[[availability]]
+region = "au-east"
+provider_region = "australiaeast"
+hourly = 1.64
+spot_hourly = 0.3031
+
+[[availability]]
+region = "eu-central"
+provider_region = "germanywestcentral"
+hourly = 1.469
+spot_hourly = 0.2715
+
+[[availability]]
+region = "eu-north"
+provider_region = "swedencentral"
+hourly = 1.469
+spot_hourly = 0.2715
+
+[[availability]]
+region = "eu-west"
+provider_region = "northeurope"
+hourly = 1.617
+spot_hourly = 0.2988
+
+[[availability]]
+region = "eu-west"
+provider_region = "westeurope"
+hourly = 1.617
+spot_hourly = 0.2988
+
+[[availability]]
+region = "uk-south"
+provider_region = "uksouth"
+hourly = 1.414
+spot_hourly = 0.2613
+
+[[availability]]
+region = "us-central"
+provider_region = "southcentralus"
+hourly = 1.356
+spot_hourly = 0.2506
+
+[[availability]]
+region = "us-east"
+provider_region = "eastus"
+hourly = 1.13
+spot_hourly = 0.2088
+
+[[availability]]
+region = "us-east"
+provider_region = "eastus2"
+hourly = 1.13
+spot_hourly = 0.2088
+
+[[availability]]
+region = "us-west"
+provider_region = "westus"
+hourly = 1.469
+spot_hourly = 0.2715
+
+[[availability]]
+region = "us-west"
+provider_region = "westus2"
+hourly = 1.13
+spot_hourly = 0.2373

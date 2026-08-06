@@ -42,7 +42,12 @@ function offeringToml(offering: AzureOffering): string {
   );
   lines.push(`base_gpu = ${tomlString(offering.baseGpu)}`);
   lines.push(`instance = ${tomlString(offering.instance)}`);
-  lines.push(`gpus_per_instance = ${offering.gpusPerInstance}`);
+  // Fractional GPU counts (partitioned GPUs) round to 6dp so 1/6 stays exact
+  // enough for per-GPU price math without emitting a repeating decimal.
+  const gpus = Number.isInteger(offering.gpusPerInstance)
+    ? String(offering.gpusPerInstance)
+    : String(Math.round(offering.gpusPerInstance * 1e6) / 1e6);
+  lines.push(`gpus_per_instance = ${gpus}`);
   if (offering.vramGb !== undefined) lines.push(`vram_gb = ${offering.vramGb}`);
   if (offering.vcpus !== undefined) lines.push(`vcpus = ${offering.vcpus}`);
   if (offering.memoryGb !== undefined)

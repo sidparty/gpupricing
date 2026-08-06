@@ -12,6 +12,7 @@ import {
   escapeHtml,
   formatHourly,
   formatNumber,
+  formatGpuCount,
   formatPerGpu,
   formatStorage,
   formatTflops,
@@ -1090,7 +1091,7 @@ function OfferingTable(props: {
                 </td>
               )}
               <td data-sort={sortNumber(offering.gpus_per_instance)}>
-                {offering.gpus_per_instance}
+                {formatGpuCount(offering.gpus_per_instance)}
               </td>
               <td data-sort={sortNumber(offering.vram_gb)}>
                 {formatVram(offering.vram_gb)}
