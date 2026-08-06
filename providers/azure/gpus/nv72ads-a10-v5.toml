@@ -1,0 +1,219 @@
+# AUTO-SYNCED from the Azure Retail Prices API (prices.azure.com) on 2026-08.
+# Instance->GPU mapping is curated in packages/core/src/sync/azure.ts; do not edit here.
+base_gpu = "nvidia/a10"
+instance = "NV72ads A10 v5"
+gpus_per_instance = 2
+vcpus = 72
+memory_gb = 880
+local_storage_gb = 2880
+last_updated = "2026-08"
+
+[[availability]]
+region = "af-south"
+provider_region = "southafricanorth"
+hourly = 9.519
+spot_hourly = 1.7591
+
+[[availability]]
+region = "ap-east"
+provider_region = "eastasia"
+hourly = 10.106
+spot_hourly = 1.8676
+
+[[availability]]
+region = "ap-northeast"
+provider_region = "japaneast"
+hourly = 9.454
+spot_hourly = 1.7471
+
+[[availability]]
+region = "ap-northeast"
+provider_region = "koreacentral"
+hourly = 8.802
+spot_hourly = 1.6266
+
+[[availability]]
+region = "ap-northeast"
+provider_region = "koreasouth"
+hourly = 8.15
+spot_hourly = 1.5061
+
+[[availability]]
+region = "ap-south"
+provider_region = "centralindia"
+hourly = 9.128
+spot_hourly = 1.6869
+
+[[availability]]
+region = "ap-southeast"
+provider_region = "indonesiacentral"
+hourly = 7.987
+spot_hourly = 1.476
+
+[[availability]]
+region = "ap-southeast"
+provider_region = "malaysiawest"
+hourly = 7.628
+spot_hourly = 1.4097
+
+[[availability]]
+region = "ap-southeast"
+provider_region = "southeastasia"
+hourly = 8.476
+spot_hourly = 1.5664
+
+[[availability]]
+region = "au-east"
+provider_region = "australiaeast"
+hourly = 9.454
+spot_hourly = 1.7471
+
+[[availability]]
+region = "ca-central"
+provider_region = "canadacentral"
+hourly = 7.824
+spot_hourly = 1.4459
+
+[[availability]]
+region = "eu-central"
+provider_region = "germanywestcentral"
+hourly = 8.476
+spot_hourly = 1.5664
+
+[[availability]]
+region = "eu-central"
+provider_region = "italynorth"
+hourly = 8.476
+spot_hourly = 1.5664
+
+[[availability]]
+region = "eu-central"
+provider_region = "polandcentral"
+hourly = 8.476
+spot_hourly = 1.5664
+
+[[availability]]
+region = "eu-central"
+provider_region = "switzerlandnorth"
+hourly = 9.324
+spot_hourly = 1.7231
+
+[[availability]]
+region = "eu-north"
+provider_region = "swedencentral"
+hourly = 8.476
+spot_hourly = 1.5664
+
+[[availability]]
+region = "eu-west"
+provider_region = "francecentral"
+hourly = 8.15
+spot_hourly = 1.5061
+
+[[availability]]
+region = "eu-west"
+provider_region = "northeurope"
+hourly = 7.824
+spot_hourly = 1.4459
+
+[[availability]]
+region = "eu-west"
+provider_region = "spaincentral"
+hourly = 8.476
+spot_hourly = 1.5664
+
+[[availability]]
+region = "eu-west"
+provider_region = "westeurope"
+hourly = 8.476
+spot_hourly = 1.5664
+
+[[availability]]
+region = "me-central"
+provider_region = "qatarcentral"
+hourly = 9.324
+spot_hourly = 1.7231
+
+[[availability]]
+region = "me-central"
+provider_region = "uaenorth"
+hourly = 9.324
+spot_hourly = 1.7231
+
+[[availability]]
+region = "me-west"
+provider_region = "israelcentral"
+hourly = 9.324
+spot_hourly = 1.7231
+
+[[availability]]
+region = "mx-central"
+provider_region = "mexicocentral"
+hourly = 7.196
+spot_hourly = 1.3298
+
+[[availability]]
+region = "sa-east"
+provider_region = "brazilsouth"
+hourly = 13.04
+spot_hourly = 2.4098
+
+[[availability]]
+region = "uk-south"
+provider_region = "uksouth"
+hourly = 8.15
+spot_hourly = 1.5061
+
+[[availability]]
+region = "uk-south"
+provider_region = "ukwest"
+hourly = 8.541
+spot_hourly = 1.7082
+
+[[availability]]
+region = "us-central"
+provider_region = "centralus"
+hourly = 6.52
+spot_hourly = 1.2049
+
+[[availability]]
+region = "us-central"
+provider_region = "northcentralus"
+hourly = 7.824
+spot_hourly = 1.4459
+
+[[availability]]
+region = "us-central"
+provider_region = "southcentralus"
+hourly = 7.824
+spot_hourly = 1.4459
+
+[[availability]]
+region = "us-east"
+provider_region = "eastus"
+hourly = 6.52
+spot_hourly = 1.2049
+
+[[availability]]
+region = "us-east"
+provider_region = "eastus2"
+hourly = 6.52
+spot_hourly = 1.2049
+
+[[availability]]
+region = "us-west"
+provider_region = "westus"
+hourly = 8.476
+spot_hourly = 1.5664
+
+[[availability]]
+region = "us-west"
+provider_region = "westus2"
+hourly = 6.52
+spot_hourly = 1.2049
+
+[[availability]]
+region = "us-west"
+provider_region = "westus3"
+hourly = 6.52
+spot_hourly = 1.2049

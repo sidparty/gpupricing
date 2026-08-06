@@ -75,6 +75,12 @@ export interface AzureSyncResult {
  *  - Standard_ND96asr_A100_v4: a re-metered alias of Standard_ND96asr_v4 at an
  *    identical price.
  *  - FPGA (NP) and media-accelerator (NM) sizes: not GPUs.
+ *  - Fractional-GPU sizes, because gpus_per_instance must be a whole number:
+ *    NVadsA10v5 NV6/NV12/NV18 (1/6, 1/3, 1/2 of an A10) and the RTX PRO 6000 v6
+ *    sizes at 0.25 and 0.5 GPU (NC24/NC36/NC72). Their whole-GPU siblings are
+ *    included.
+ *  - NCads A10 v4 (NC8/16/32ads_A10_v4): Microsoft publishes no size page for
+ *    this series, so GPU count is unverifiable.
  */
 const INSTANCES: AzureInstance[] = [
   // --- NVIDIA A100 80GB PCIe (NC A100 v4) ---
@@ -231,6 +237,119 @@ const INSTANCES: AzureInstance[] = [
     memoryGb: 1850,
     localStorageGb: 28_000,
     fabric: "Infinity Fabric + Quantum-2 NDR InfiniBand",
+  },
+  // --- NVIDIA T4 (NCasT4 v3) ---
+  {
+    armSkuName: "Standard_NC4as_T4_v3",
+    id: "nc4as-t4-v3",
+    instance: "NC4as T4 v3",
+    baseGpu: "nvidia/t4",
+    gpusPerInstance: 1,
+    vcpus: 4,
+    memoryGb: 28,
+    localStorageGb: 176,
+  },
+  {
+    armSkuName: "Standard_NC8as_T4_v3",
+    id: "nc8as-t4-v3",
+    instance: "NC8as T4 v3",
+    baseGpu: "nvidia/t4",
+    gpusPerInstance: 1,
+    vcpus: 8,
+    memoryGb: 56,
+    localStorageGb: 352,
+  },
+  {
+    armSkuName: "Standard_NC16as_T4_v3",
+    id: "nc16as-t4-v3",
+    instance: "NC16as T4 v3",
+    baseGpu: "nvidia/t4",
+    gpusPerInstance: 1,
+    vcpus: 16,
+    memoryGb: 110,
+    localStorageGb: 352,
+  },
+  {
+    armSkuName: "Standard_NC64as_T4_v3",
+    id: "nc64as-t4-v3",
+    instance: "NC64as T4 v3",
+    baseGpu: "nvidia/t4",
+    gpusPerInstance: 4,
+    vcpus: 64,
+    memoryGb: 440,
+    localStorageGb: 2816,
+  },
+  // --- NVIDIA A10 (NVads A10 v5) — whole-GPU sizes only ---
+  {
+    armSkuName: "Standard_NV36ads_A10_v5",
+    id: "nv36ads-a10-v5",
+    instance: "NV36ads A10 v5",
+    baseGpu: "nvidia/a10",
+    gpusPerInstance: 1,
+    vcpus: 36,
+    memoryGb: 440,
+    localStorageGb: 1440,
+  },
+  {
+    armSkuName: "Standard_NV36adms_A10_v5",
+    id: "nv36adms-a10-v5",
+    instance: "NV36adms A10 v5",
+    baseGpu: "nvidia/a10",
+    gpusPerInstance: 1,
+    vcpus: 36,
+    memoryGb: 880,
+    localStorageGb: 2880,
+  },
+  {
+    armSkuName: "Standard_NV72ads_A10_v5",
+    id: "nv72ads-a10-v5",
+    instance: "NV72ads A10 v5",
+    baseGpu: "nvidia/a10",
+    gpusPerInstance: 2,
+    vcpus: 72,
+    memoryGb: 880,
+    localStorageGb: 2880,
+  },
+  // --- NVIDIA RTX PRO 6000 Blackwell SE (NC v6) — whole-GPU sizes only ---
+  {
+    armSkuName: "Standard_NC144ds_xl_RTXPRO6000BSE_v6",
+    id: "nc144ds-rtxpro6000-v6",
+    instance: "NC144ds xl RTX PRO 6000 v6",
+    baseGpu: "nvidia/rtx-pro-6000-blackwell",
+    gpusPerInstance: 1,
+    vcpus: 144,
+    memoryGb: 516,
+    localStorageGb: 1024,
+  },
+  {
+    armSkuName: "Standard_NC144lds_xl_RTXPRO6000BSE_v6",
+    id: "nc144lds-rtxpro6000-v6",
+    instance: "NC144lds xl RTX PRO 6000 v6",
+    baseGpu: "nvidia/rtx-pro-6000-blackwell",
+    gpusPerInstance: 1,
+    vcpus: 144,
+    memoryGb: 264,
+    localStorageGb: 1024,
+  },
+  {
+    armSkuName: "Standard_NC288ds_xl_RTXPRO6000BSE_v6",
+    id: "nc288ds-rtxpro6000-v6",
+    instance: "NC288ds xl RTX PRO 6000 v6",
+    baseGpu: "nvidia/rtx-pro-6000-blackwell",
+    gpusPerInstance: 2,
+    vcpus: 288,
+    memoryGb: 1032,
+    localStorageGb: 2048,
+  },
+  {
+    armSkuName: "Standard_NC288lds_xl_RTXPRO6000BSE_v6",
+    id: "nc288lds-rtxpro6000-v6",
+    instance: "NC288lds xl RTX PRO 6000 v6",
+    baseGpu: "nvidia/rtx-pro-6000-blackwell",
+    gpusPerInstance: 2,
+    vcpus: 288,
+    memoryGb: 516,
+    localStorageGb: 2048,
   },
 ];
 

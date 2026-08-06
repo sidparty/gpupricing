@@ -1,0 +1,15 @@
+name = "NVIDIA T4"
+description = "Turing inference GPU in a 70 W single-slot card; widely used for cost-efficient inference and transcoding."
+architecture = "Turing"
+vram_gb = 16
+memory_type = "GDDR6"
+memory_bandwidth_gbs = 320
+tdp_watts = 70
+interconnect = "PCIe 3.0"
+release_date = "2018-09"
+last_updated = "2026-08"
+
+# Turing predates sparsity, TF32, BF16 and FP8, so these are plain dense peaks.
+[compute]
+fp16 = 65
+int8 = 130

@@ -1,0 +1,18 @@
+name = "NVIDIA A10"
+description = "Ampere GPU for mixed graphics and inference workloads; 150 W single-slot card, no NVLink."
+architecture = "Ampere"
+vram_gb = 24
+memory_type = "GDDR6"
+memory_bandwidth_gbs = 600
+tdp_watts = 150
+interconnect = "PCIe 4.0"
+release_date = "2021-04"
+last_updated = "2026-08"
+
+# Dense (non-sparse) peaks; NVIDIA's datasheet lists these alongside
+# with-sparsity figures that are exactly double. Ampere has no FP8.
+[compute]
+tf32 = 62.5
+fp16 = 125
+bf16 = 125
+int8 = 250
