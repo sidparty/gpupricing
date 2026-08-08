@@ -46,6 +46,22 @@ for (const entry of entries) {
   }
 }
 
+// Copy GPU manufacturer logos to dist/logos/gpus/
+await fs.mkdir("./dist/logos/gpus", { recursive: true });
+
+const gpusDir = "../../gpus";
+try {
+  for (const entry of await fs.readdir(gpusDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const logoFile = Bun.file(path.join(gpusDir, entry.name, "logo.svg"));
+    if (await logoFile.exists()) {
+      await Bun.write(`./dist/logos/gpus/${entry.name}.svg`, logoFile);
+    }
+  }
+} catch (error) {
+  if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+}
+
 const template = await Bun.file("./dist/index.html").text();
 
 for (const [route, rendered] of RenderedPages) {

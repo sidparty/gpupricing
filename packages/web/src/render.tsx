@@ -31,6 +31,7 @@ export const Regions = Catalog.regions;
 
 const BaseGpuRefs = await loadProviderBaseGpuRefs(root);
 const ProviderLogoSvgs = new Map<string, string>();
+const ManufacturerLogoSvgs = new Map<string, string>();
 
 type ActiveSection = "gpus" | "providers" | "regions";
 
@@ -426,7 +427,7 @@ function buildSearchItems(): SearchIndexItem[] {
       title: metadata.name,
       id: gpu.id,
       href: gpuHref(gpu.id),
-      logo: defaultLogoHref(),
+      logo: manufacturerLogoHref(gpu.manufacturerId),
       manufacturer: gpu.manufacturerName,
       vramGb: metadata.vram_gb,
       providerCount: gpu.providerCount,
@@ -689,7 +690,12 @@ function GpuTable(props: {
                   </a>
                   <span class="subtle mono">{gpu.id}</span>
                 </td>
-                <td data-sort={gpu.manufacturerName}>{gpu.manufacturerName}</td>
+                <td data-sort={gpu.manufacturerName}>
+                  <ManufacturerLabel
+                    manufacturerId={gpu.manufacturerId}
+                    manufacturerName={gpu.manufacturerName}
+                  />
+                </td>
                 <td data-sort={metadata.architecture ?? ""}>
                   {metadata.architecture ?? DASH}
                 </td>
@@ -856,7 +862,13 @@ function GpuPage(props: { gpu: GpuEntry }) {
       />
       <Facts
         items={[
-          ["Manufacturer", gpu.manufacturerName],
+          [
+            "Manufacturer",
+            <ManufacturerLabel
+              manufacturerId={gpu.manufacturerId}
+              manufacturerName={gpu.manufacturerName}
+            />,
+          ],
           ["Architecture", metadata.architecture ?? DASH],
           ["VRAM", formatVram(metadata.vram_gb)],
           ["Memory", metadata.memory_type ?? DASH],
@@ -1319,6 +1331,23 @@ function EmptyRow(props: { columns: number }) {
   );
 }
 
+function ManufacturerLabel(props: {
+  manufacturerId: string;
+  manufacturerName: string;
+}) {
+  return (
+    <span class="manufacturer-label">
+      <span
+        class="manufacturer-logo"
+        dangerouslySetInnerHTML={{
+          __html: manufacturerLogoSvg(props.manufacturerId),
+        }}
+      />
+      <span>{props.manufacturerName}</span>
+    </span>
+  );
+}
+
 function ProviderLink(props: {
   providerId: string;
   provider: Pick<Provider, "name">;
@@ -1676,23 +1705,45 @@ function defaultLogoHref() {
   return "/logos/default.svg";
 }
 
-function providerLogoSvg(providerId: string) {
-  const cached = ProviderLogoSvgs.get(providerId);
+function manufacturerLogoHref(manufacturerId: string) {
+  return `/logos/gpus/${encodeURIComponent(manufacturerId)}.svg`;
+}
+
+/** Manufacturer marks live at gpus/<manufacturer>/logo.svg. */
+function manufacturerLogoSvg(manufacturerId: string) {
+  const cached = ManufacturerLogoSvgs.get(manufacturerId);
   if (cached) return cached;
 
-  const logoPath = path.join(root, "providers", providerId, "logo.svg");
+  const logoPath = path.join(root, "gpus", manufacturerId, "logo.svg");
   const defaultLogoPath = path.join(root, "providers", "logo.svg");
-  const rawSvg = readFileSync(
-    existsSync(logoPath) ? logoPath : defaultLogoPath,
-    "utf8",
+  const svg = normalizeLogoSvg(
+    readFileSync(existsSync(logoPath) ? logoPath : defaultLogoPath, "utf8"),
   );
-  const svg = rawSvg
+
+  ManufacturerLogoSvgs.set(manufacturerId, svg);
+  return svg;
+}
+
+/** Strip fixed sizing and force theme-adaptive colors. */
+function normalizeLogoSvg(rawSvg: string) {
+  return rawSvg
     .replace(/<svg\b([^>]*)>/i, (_, attributes: string) => {
       const cleaned = attributes.replace(/\s(width|height)="[^"]*"/gi, "");
       return `<svg${cleaned} aria-hidden="true" focusable="false">`;
     })
     .replace(/\sfill="(?!none|currentColor)[^"]*"/gi, ' fill="currentColor"')
     .replace(/\sstroke="(?!none|currentColor)[^"]*"/gi, ' stroke="currentColor"');
+}
+
+function providerLogoSvg(providerId: string) {
+  const cached = ProviderLogoSvgs.get(providerId);
+  if (cached) return cached;
+
+  const logoPath = path.join(root, "providers", providerId, "logo.svg");
+  const defaultLogoPath = path.join(root, "providers", "logo.svg");
+  const svg = normalizeLogoSvg(
+    readFileSync(existsSync(logoPath) ? logoPath : defaultLogoPath, "utf8"),
+  );
 
   ProviderLogoSvgs.set(providerId, svg);
   return svg;
