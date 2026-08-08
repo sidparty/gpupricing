@@ -580,23 +580,18 @@ tbody tr:last-child td {
 /*
  * A fixed box regardless of the mark's aspect ratio, so every label starts at
  * the same offset. Non-square art letterboxes inside it.
+ *
+ * The box is wider than it is tall because many marks are (NVIDIA ~1.48:1,
+ * CoreWeave ~1.66:1). A square box would fit those by width and leave them
+ * looking undersized beside a square mark; square marks simply centre instead.
  */
 .provider-logo,
 .manufacturer-logo {
   flex: 0 0 auto;
   display: block;
-  width: 1rem;
+  width: 1.4rem;
   height: 1rem;
   color: currentColor;
-}
-
-/*
- * Manufacturer marks are wider than they are tall (NVIDIA is ~1.48:1), and a
- * square box would fit them by width and leave them looking undersized next to
- * a square mark like AMD's. The box stays a fixed width, so labels still align.
- */
-.manufacturer-logo {
-  width: 1.4rem;
 }
 
 .provider-logo svg,
