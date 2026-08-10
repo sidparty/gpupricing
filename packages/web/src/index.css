@@ -577,19 +577,11 @@ tbody tr:last-child td {
   gap: 0.375rem;
 }
 
-/*
- * A fixed box regardless of the mark's aspect ratio, so every label starts at
- * the same offset. Non-square art letterboxes inside it.
- *
- * The box is wider than it is tall because many marks are (NVIDIA ~1.48:1,
- * CoreWeave ~1.66:1). A square box would fit those by width and leave them
- * looking undersized beside a square mark; square marks simply centre instead.
- */
 .provider-logo,
 .manufacturer-logo {
   flex: 0 0 auto;
   display: block;
-  width: 1.4rem;
+  width: 1rem;
   height: 1rem;
   color: currentColor;
 }
