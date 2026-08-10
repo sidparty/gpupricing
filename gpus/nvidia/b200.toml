@@ -1,4 +1,4 @@
-name = "NVIDIA B200"
+name = "B200"
 description = "Blackwell datacenter GPU with 180 GB HBM3e and FP4 tensor cores for large-scale training and inference."
 architecture = "Blackwell"
 vram_gb = 180

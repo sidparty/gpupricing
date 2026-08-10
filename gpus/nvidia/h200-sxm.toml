@@ -1,4 +1,4 @@
-name = "NVIDIA H200 SXM"
+name = "H200 SXM"
 description = "Hopper GPU with 141 GB of HBM3e for memory-bound inference and long-context workloads."
 architecture = "Hopper"
 vram_gb = 141

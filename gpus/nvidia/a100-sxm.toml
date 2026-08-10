@@ -1,4 +1,4 @@
-name = "NVIDIA A100 SXM"
+name = "A100 SXM"
 description = "Ampere datacenter GPU (80 GB SXM4), a long-serving standard for training and inference."
 architecture = "Ampere"
 vram_gb = 80

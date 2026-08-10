@@ -1,4 +1,4 @@
-name = "NVIDIA A100 80GB PCIe"
+name = "A100 80GB PCIe"
 description = "Ampere datacenter GPU in PCIe form factor; same compute as the SXM part at lower power and bandwidth."
 architecture = "Ampere"
 vram_gb = 80

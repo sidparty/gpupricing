@@ -1,4 +1,4 @@
-name = "NVIDIA H100 NVL 94GB"
+name = "H100 NVL 94GB"
 description = "Hopper GPU with 94 GB HBM3 in a PCIe/NVL card; its own clock bin, slower than H100 SXM."
 architecture = "Hopper"
 vram_gb = 94

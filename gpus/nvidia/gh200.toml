@@ -1,4 +1,4 @@
-name = "NVIDIA GH200 Grace Hopper"
+name = "GH200 Grace Hopper"
 description = "Grace Hopper superchip pairing a Hopper GPU (96 GB HBM3) with a 72-core Grace CPU over NVLink-C2C."
 architecture = "Hopper"
 vram_gb = 96

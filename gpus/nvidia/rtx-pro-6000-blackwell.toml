@@ -1,4 +1,4 @@
-name = "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+name = "RTX PRO 6000 Blackwell Server Edition"
 description = "Blackwell (GB202) server GPU with 96 GB GDDR7, a cost-efficient FP4-capable inference and graphics card."
 architecture = "Blackwell"
 vram_gb = 96

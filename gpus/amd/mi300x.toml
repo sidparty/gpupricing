@@ -1,4 +1,4 @@
-name = "AMD Instinct MI300X"
+name = "Instinct MI300X"
 description = "CDNA 3 datacenter accelerator with 192 GB HBM3, aimed at large-model training and inference."
 architecture = "CDNA 3"
 vram_gb = 192

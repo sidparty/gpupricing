@@ -1,4 +1,4 @@
-name = "NVIDIA H100 SXM"
+name = "H100 SXM"
 description = "Hopper datacenter GPU in SXM5 form factor, the workhorse for large-scale training and inference."
 architecture = "Hopper"
 vram_gb = 80

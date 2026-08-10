@@ -1,4 +1,4 @@
-name = "NVIDIA T4"
+name = "T4"
 description = "Turing inference GPU in a 70 W single-slot card; widely used for cost-efficient inference and transcoding."
 architecture = "Turing"
 vram_gb = 16

@@ -1,4 +1,4 @@
-name = "NVIDIA A10"
+name = "A10"
 description = "Ampere GPU for mixed graphics and inference workloads; 150 W single-slot card, no NVLink."
 architecture = "Ampere"
 vram_gb = 24

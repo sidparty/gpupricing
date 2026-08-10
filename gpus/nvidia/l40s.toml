@@ -1,4 +1,4 @@
-name = "NVIDIA L40S"
+name = "L40S"
 description = "Ada Lovelace datacenter GPU with 48 GB GDDR6, tuned for inference and generative AI throughput."
 architecture = "Ada Lovelace"
 vram_gb = 48

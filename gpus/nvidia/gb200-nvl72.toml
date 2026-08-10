@@ -1,4 +1,4 @@
-name = "NVIDIA GB200 NVL72"
+name = "GB200 NVL72"
 description = "Grace Blackwell rack-scale system; each Blackwell GPU carries 186 GB HBM3e in a 72-GPU NVLink domain."
 architecture = "Blackwell"
 # Usable HBM3e capacity per GPU as deployed (physical package is up to 192 GB).

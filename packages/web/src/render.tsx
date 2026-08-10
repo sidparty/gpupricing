@@ -594,7 +594,10 @@ function renderPage(
 
 function gpuPageMetadata(gpu: GpuEntry): PageMetadata {
   const metadata = gpu.metadata;
-  const title = `${metadata.name} cloud pricing and specs | ${SITE_NAME}`;
+  // GPU names omit the manufacturer (it has its own column), but titles and
+  // descriptions are read out of context, so spell it out here.
+  const fullName = `${gpu.manufacturerName} ${metadata.name}`;
+  const title = `${fullName} cloud pricing and specs | ${SITE_NAME}`;
   const facts = [
     `${formatVram(metadata.vram_gb)} ${metadata.memory_type ?? "VRAM"}`.trim(),
     metadata.architecture ? `${metadata.architecture} architecture` : undefined,
@@ -605,7 +608,7 @@ function gpuPageMetadata(gpu: GpuEntry): PageMetadata {
   const description = compact(
     [
       metadata.description,
-      `Compare on-demand ${metadata.name} pricing across ${plural(gpu.providerCount, "provider")} and ${plural(gpu.regionCount, "region")}.`,
+      `Compare on-demand ${fullName} pricing across ${plural(gpu.providerCount, "provider")} and ${plural(gpu.regionCount, "region")}.`,
       facts.length ? `Specs: ${facts.join(", ")}.` : undefined,
     ],
     280,
