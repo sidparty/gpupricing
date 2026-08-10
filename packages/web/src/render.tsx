@@ -93,6 +93,15 @@ interface RegionAreaGroup {
   minPricePerGpuHour?: number;
 }
 
+interface ManufacturerEntry {
+  id: string;
+  name: string;
+  gpus: GpuEntry[];
+  providerCount: number;
+  regionCount: number;
+  minPricePerGpuHour?: number;
+}
+
 interface SearchIndexItem {
   type: "gpu" | "provider" | "region";
   title: string;
@@ -148,6 +157,7 @@ const GpuEntries = buildGpuEntries();
 const OfferingEntries = buildOfferingEntries();
 connectOfferings(GpuEntries, OfferingEntries);
 const RegionEntries = buildRegionEntries();
+const ManufacturerEntries = buildManufacturerEntries();
 const SearchItems = buildSearchItems();
 
 export const RenderedPages = buildPages();
@@ -365,6 +375,39 @@ function buildRegionEntries(): RegionEntry[] {
     .sort((a, b) => a.region.name.localeCompare(b.region.name));
 }
 
+/** Group canonical GPUs by manufacturer so each gets a browsable page. */
+function buildManufacturerEntries(): ManufacturerEntry[] {
+  const buckets = new Map<string, GpuEntry[]>();
+  for (const gpu of GpuEntries.values()) {
+    const existing = buckets.get(gpu.manufacturerId) ?? [];
+    existing.push(gpu);
+    buckets.set(gpu.manufacturerId, existing);
+  }
+
+  return [...buckets.entries()]
+    .map(([id, gpus]) => {
+      const providers = new Set<string>();
+      const regions = new Set<string>();
+      let minPricePerGpuHour: number | undefined;
+      for (const gpu of gpus) {
+        for (const offering of gpu.offerings) {
+          providers.add(offering.providerId);
+          for (const slug of offering.regionSlugs) regions.add(slug);
+        }
+        minPricePerGpuHour = minValue(minPricePerGpuHour, gpu.minPricePerGpuHour);
+      }
+      return {
+        id,
+        name: manufacturerName(id),
+        gpus: sortGpus(gpus),
+        providerCount: providers.size,
+        regionCount: regions.size,
+        minPricePerGpuHour,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 function groupRegionsByArea(regions: RegionEntry[]): RegionAreaGroup[] {
   const buckets = new Map<string, RegionEntry[]>();
   for (const region of regions) {
@@ -545,6 +588,17 @@ function buildPages() {
     );
   }
 
+  for (const manufacturer of ManufacturerEntries) {
+    addPage(
+      manufacturerHref(manufacturer.id),
+      renderPage(
+        "gpus",
+        <ManufacturerPage manufacturer={manufacturer} />,
+        manufacturerPageMetadata(manufacturer),
+      ),
+    );
+  }
+
   for (const [providerId, provider] of providerList) {
     const offerings = OfferingEntries.filter(
       (entry) => entry.providerId === providerId,
@@ -633,6 +687,22 @@ function providerPageMetadata(
   return { title, description };
 }
 
+function manufacturerPageMetadata(
+  manufacturer: ManufacturerEntry,
+): PageMetadata {
+  const title = `${manufacturer.name} GPU cloud pricing | ${SITE_NAME}`;
+  const description = compact(
+    [
+      `Compare on-demand cloud pricing for ${plural(manufacturer.gpus.length, `${manufacturer.name} GPU`)} across ${plural(manufacturer.providerCount, "provider")} and ${plural(manufacturer.regionCount, "region")}.`,
+      manufacturer.minPricePerGpuHour !== undefined
+        ? `From ${formatPerGpu(manufacturer.minPricePerGpuHour)}/GPU/hr.`
+        : undefined,
+    ],
+    280,
+  );
+  return { title, description };
+}
+
 function regionPageMetadata(region: RegionEntry): PageMetadata {
   const title = `GPU pricing in ${region.region.name} | ${SITE_NAME}`;
   const description = compact(
@@ -657,8 +727,10 @@ function GpuTable(props: {
   gpus: GpuEntry[];
   title: string;
   hideHeading?: boolean;
+  showManufacturer?: boolean;
 }) {
-  const columns = 9;
+  const showManufacturer = props.showManufacturer ?? true;
+  const columns = showManufacturer ? 9 : 8;
   return (
     <TableSection
       title={props.title}
@@ -670,7 +742,7 @@ function GpuTable(props: {
         <thead>
           <tr>
             <SortableTh>GPU</SortableTh>
-            <SortableTh>Manufacturer</SortableTh>
+            {showManufacturer && <SortableTh>Manufacturer</SortableTh>}
             <SortableTh>Architecture</SortableTh>
             <SortableTh type="number">VRAM</SortableTh>
             <SortableTh>Memory</SortableTh>
@@ -693,12 +765,14 @@ function GpuTable(props: {
                   </a>
                   <span class="subtle mono">{gpu.id}</span>
                 </td>
-                <td data-sort={gpu.manufacturerName}>
-                  <ManufacturerLabel
-                    manufacturerId={gpu.manufacturerId}
-                    manufacturerName={gpu.manufacturerName}
-                  />
-                </td>
+                {showManufacturer && (
+                  <td data-sort={gpu.manufacturerName}>
+                    <ManufacturerLink
+                      manufacturerId={gpu.manufacturerId}
+                      manufacturerName={gpu.manufacturerName}
+                    />
+                  </td>
+                )}
                 <td data-sort={metadata.architecture ?? ""}>
                   {metadata.architecture ?? DASH}
                 </td>
@@ -855,7 +929,9 @@ function GpuPage(props: { gpu: GpuEntry }) {
           <Fragment>
             <a href="/gpus">GPUs</a>
             <span>/</span>
-            <span>{gpu.manufacturerName}</span>
+            <a href={manufacturerHref(gpu.manufacturerId)}>
+              {gpu.manufacturerName}
+            </a>
           </Fragment>
         }
         title={metadata.name}
@@ -867,7 +943,7 @@ function GpuPage(props: { gpu: GpuEntry }) {
         items={[
           [
             "Manufacturer",
-            <ManufacturerLabel
+            <ManufacturerLink
               manufacturerId={gpu.manufacturerId}
               manufacturerName={gpu.manufacturerName}
             />,
@@ -961,6 +1037,33 @@ function ProviderPage(props: {
       >
         <OfferingTable offerings={props.offerings} mode="by-gpu" />
       </TableSection>
+    </Fragment>
+  );
+}
+
+function ManufacturerPage(props: { manufacturer: ManufacturerEntry }) {
+  const { manufacturer } = props;
+  return (
+    <Fragment>
+      <DetailHeader
+        eyebrow={<a href="/gpus">GPUs</a>}
+        title={manufacturer.name}
+        code={manufacturer.id}
+        copyValue={manufacturer.id}
+      />
+      <Facts
+        items={[
+          ["GPUs", manufacturer.gpus.length],
+          ["Providers", manufacturer.providerCount],
+          ["Regions", manufacturer.regionCount],
+          ["Best $/GPU/hr", formatPerGpu(manufacturer.minPricePerGpuHour)],
+        ]}
+      />
+      <GpuTable
+        gpus={manufacturer.gpus}
+        title="GPUs"
+        showManufacturer={false}
+      />
     </Fragment>
   );
 }
@@ -1334,12 +1437,12 @@ function EmptyRow(props: { columns: number }) {
   );
 }
 
-function ManufacturerLabel(props: {
+function ManufacturerLink(props: {
   manufacturerId: string;
   manufacturerName: string;
 }) {
   return (
-    <span class="manufacturer-label">
+    <a class="manufacturer-link" href={manufacturerHref(props.manufacturerId)}>
       <span
         class="manufacturer-logo"
         dangerouslySetInnerHTML={{
@@ -1347,7 +1450,7 @@ function ManufacturerLabel(props: {
         }}
       />
       <span>{props.manufacturerName}</span>
-    </span>
+    </a>
   );
 }
 
@@ -1690,6 +1793,11 @@ function encodedPath(id: string) {
 
 function gpuHref(id: string) {
   return `/gpus/${encodedPath(id)}`;
+}
+
+/** Manufacturers sit above their GPUs: /gpus/nvidia lists every NVIDIA GPU. */
+function manufacturerHref(id: string) {
+  return `/gpus/${encodeURIComponent(id)}`;
 }
 
 function providerHref(id: string) {
