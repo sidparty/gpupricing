@@ -103,7 +103,7 @@ interface ManufacturerEntry {
 }
 
 interface SearchIndexItem {
-  type: "gpu" | "provider" | "region";
+  type: "gpu" | "manufacturer" | "provider" | "region";
   title: string;
   id: string;
   href: string;
@@ -549,6 +549,25 @@ function buildSearchItems(): SearchIndexItem[] {
           offering.offering.instance,
           offering.provider.name,
         ]),
+      ].filter((token): token is string => Boolean(token)),
+    });
+  }
+
+  for (const manufacturer of ManufacturerEntries) {
+    items.push({
+      type: "manufacturer",
+      title: manufacturer.name,
+      id: manufacturer.id,
+      href: manufacturerHref(manufacturer.id),
+      logo: manufacturerLogoHref(manufacturer.id),
+      gpuCount: manufacturer.gpus.length,
+      providerCount: manufacturer.providerCount,
+      regionCount: manufacturer.regionCount,
+      minPricePerGpuHour: manufacturer.minPricePerGpuHour,
+      tokens: [
+        manufacturer.name,
+        manufacturer.id,
+        ...manufacturer.gpus.map((gpu) => gpu.metadata.name),
       ].filter((token): token is string => Boolean(token)),
     });
   }

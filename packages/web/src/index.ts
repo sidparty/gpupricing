@@ -1,7 +1,7 @@
 type SortDirection = "asc" | "desc";
 
 interface SearchIndexItem {
-  type: "gpu" | "provider" | "region";
+  type: "gpu" | "manufacturer" | "provider" | "region";
   title: string;
   id: string;
   href: string;
@@ -267,6 +267,19 @@ function resultMeta(item: SearchIndexItem) {
     return [
       item.manufacturer,
       item.vramGb === undefined ? undefined : `${item.vramGb} GB`,
+      item.providerCount === undefined
+        ? undefined
+        : `${item.providerCount} providers`,
+      item.regionCount === undefined
+        ? undefined
+        : `${item.regionCount} regions`,
+      formatPerGpuHour(item.minPricePerGpuHour),
+    ].filter((value): value is string => Boolean(value));
+  }
+
+  if (item.type === "manufacturer") {
+    return [
+      item.gpuCount === undefined ? undefined : `${item.gpuCount} GPUs`,
       item.providerCount === undefined
         ? undefined
         : `${item.providerCount} providers`,
