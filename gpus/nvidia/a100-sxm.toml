@@ -1,5 +1,6 @@
 name = "A100 SXM"
 description = "Ampere datacenter GPU (80 GB SXM4), a long-serving standard for training and inference."
+family = "a100"
 architecture = "Ampere"
 vram_gb = 80
 memory_type = "HBM2e"

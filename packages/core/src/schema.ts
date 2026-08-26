@@ -42,6 +42,10 @@ const GpuMetadataBase = z.object({
   id: z.string(),
   name: z.string().min(1, "GPU name cannot be empty"),
   description: z.string().min(1, "GPU description cannot be empty").optional(),
+  // Groups variants of the same GPU (a100-40gb, a100-sxm and a100-pcie all set
+  // family = "a100") so the GPUs table lists one row per family and spreads the
+  // differing specs across it. Omit it and the GPU stands alone.
+  family: z.string().min(1, "Family cannot be empty").optional(),
   architecture: z.string().min(1, "Architecture cannot be empty").optional(),
   vram_gb: z.number().min(0, "VRAM cannot be negative"),
   memory_type: z.string().min(1, "Memory type cannot be empty").optional(),
@@ -108,6 +112,8 @@ export const GpuOffering = z
       .string()
       .min(1, "GPU description cannot be empty")
       .optional(),
+    // Inherited from the canonical GPU via base_gpu; see GpuMetadata.family.
+    family: z.string().min(1, "Family cannot be empty").optional(),
     architecture: z.string().min(1, "Architecture cannot be empty").optional(),
     vram_gb: z.number().min(0, "VRAM cannot be negative"),
     memory_type: z.string().min(1, "Memory type cannot be empty").optional(),

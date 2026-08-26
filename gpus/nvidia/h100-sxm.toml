@@ -1,5 +1,6 @@
 name = "H100 SXM"
 description = "Hopper datacenter GPU in SXM5 form factor, the workhorse for large-scale training and inference."
+family = "h100"
 architecture = "Hopper"
 vram_gb = 80
 memory_type = "HBM3"

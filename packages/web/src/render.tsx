@@ -93,6 +93,23 @@ interface RegionAreaGroup {
   minPricePerGpuHour?: number;
 }
 
+/**
+ * One or more variants of the same GPU (the A100 40GB SXM, 80GB SXM and 80GB
+ * PCIe are one family). The GPUs table lists a row per family and spreads the
+ * differing specs across it; drilling in keeps every variant separate.
+ * A GPU without a `family` forms a family of one, so nothing special-cases it.
+ */
+interface GpuFamilyEntry {
+  id: string;
+  name: string;
+  manufacturerId: string;
+  manufacturerName: string;
+  gpus: GpuEntry[];
+  providerCount: number;
+  regionCount: number;
+  minPricePerGpuHour?: number;
+}
+
 interface ManufacturerEntry {
   id: string;
   name: string;
@@ -158,6 +175,7 @@ const OfferingEntries = buildOfferingEntries();
 connectOfferings(GpuEntries, OfferingEntries);
 const RegionEntries = buildRegionEntries();
 const ManufacturerEntries = buildManufacturerEntries();
+const FamilyEntries = buildFamilyEntries(sortGpus([...GpuEntries.values()]));
 const SearchItems = buildSearchItems();
 
 export const RenderedPages = buildPages();
@@ -375,6 +393,98 @@ function buildRegionEntries(): RegionEntry[] {
     .sort((a, b) => a.region.name.localeCompare(b.region.name));
 }
 
+/**
+ * Longest shared leading words across the variant names — "A100 40GB SXM",
+ * "A100 SXM" and "A100 80GB PCIe" give "A100" — so a family names itself
+ * instead of needing the name spelled out in data.
+ */
+function commonNamePrefix(names: string[], fallback: string) {
+  if (names.length === 0) return fallback;
+  const wordLists = names.map((name) => name.split(" "));
+  const shared: string[] = [];
+  for (let index = 0; index < wordLists[0]!.length; index++) {
+    const word = wordLists[0]![index];
+    if (wordLists.every((words) => words[index] === word)) shared.push(word!);
+    else break;
+  }
+  return shared.length > 0 ? shared.join(" ") : fallback;
+}
+
+/** Group GPU variants into families; a GPU with no `family` stands alone. */
+function buildFamilyEntries(gpus: GpuEntry[]): GpuFamilyEntry[] {
+  const buckets = new Map<string, GpuEntry[]>();
+  for (const gpu of gpus) {
+    // Fall back to the GPU's own id so ungrouped GPUs get a family of one.
+    const key = `${gpu.manufacturerId}/${gpu.metadata.family ?? gpu.id.split("/").slice(1).join("/")}`;
+    const existing = buckets.get(key) ?? [];
+    existing.push(gpu);
+    buckets.set(key, existing);
+  }
+
+  return [...buckets.entries()].map(([key, entries]) => {
+    // Order variants smallest-first so the spread reads "40 / 80 GB".
+    const sorted = [...entries].sort(
+      (a, b) =>
+        a.metadata.vram_gb - b.metadata.vram_gb ||
+        a.metadata.name.localeCompare(b.metadata.name),
+    );
+    const providers = new Set<string>();
+    const regions = new Set<string>();
+    let minPricePerGpuHour: number | undefined;
+    for (const gpu of sorted) {
+      for (const offering of gpu.offerings) {
+        providers.add(offering.providerId);
+        for (const slug of offering.regionSlugs) regions.add(slug);
+      }
+      minPricePerGpuHour = minValue(minPricePerGpuHour, gpu.minPricePerGpuHour);
+    }
+    const first = sorted[0]!;
+    return {
+      id: key,
+      name:
+        sorted.length === 1
+          ? first.metadata.name
+          : commonNamePrefix(
+              sorted.map((gpu) => gpu.metadata.name),
+              key.split("/").slice(1).join("/").toUpperCase(),
+            ),
+      manufacturerId: first.manufacturerId,
+      manufacturerName: first.manufacturerName,
+      gpus: sorted,
+      providerCount: providers.size,
+      regionCount: regions.size,
+      minPricePerGpuHour,
+    };
+  });
+}
+
+/** Wrap a single GPU as a family of one so tables can render it uniformly. */
+function singletonFamily(gpu: GpuEntry): GpuFamilyEntry {
+  return {
+    id: gpu.id,
+    name: gpu.metadata.name,
+    manufacturerId: gpu.manufacturerId,
+    manufacturerName: gpu.manufacturerName,
+    gpus: [gpu],
+    providerCount: gpu.providerCount,
+    regionCount: gpu.regionCount,
+    minPricePerGpuHour: gpu.minPricePerGpuHour,
+  };
+}
+
+/** Distinct values of one spec across a family, in variant order. */
+function familyValues<T>(
+  gpus: GpuEntry[],
+  pick: (gpu: GpuEntry) => T | undefined,
+): T[] {
+  const seen: T[] = [];
+  for (const gpu of gpus) {
+    const value = pick(gpu);
+    if (value !== undefined && !seen.includes(value)) seen.push(value);
+  }
+  return seen;
+}
+
 /** Group canonical GPUs by manufacturer so each gets a browsable page. */
 function buildManufacturerEntries(): ManufacturerEntry[] {
   const buckets = new Map<string, GpuEntry[]>();
@@ -588,7 +698,7 @@ function buildPages() {
     pages.set(normalizeRoute(route), page);
   };
 
-  const home = renderPage("gpus", <GpusPage gpus={gpuList} />);
+  const home = renderPage("gpus", <GpusPage families={FamilyEntries} />);
   addPage("/", home);
   addPage("/gpus", home);
   addPage(
@@ -604,6 +714,26 @@ function buildPages() {
     addPage(
       gpuHref(gpu.id),
       renderPage("gpus", <GpuPage gpu={gpu} />, gpuPageMetadata(gpu)),
+    );
+  }
+
+  // Only multi-variant families need a page; a family of one links straight to
+  // its GPU. Their routes share a namespace, so a clash must not pass silently.
+  for (const family of FamilyEntries) {
+    if (family.gpus.length < 2) continue;
+    const route = normalizeRoute(familyHref(family));
+    if (pages.has(route)) {
+      throw new Error(
+        `GPU family "${family.id}" collides with an existing page at ${route}. Rename the family or the GPU.`,
+      );
+    }
+    addPage(
+      route,
+      renderPage(
+        "gpus",
+        <FamilyPage family={family} />,
+        familyPageMetadata(family),
+      ),
     );
   }
 
@@ -706,6 +836,21 @@ function providerPageMetadata(
   return { title, description };
 }
 
+function familyPageMetadata(family: GpuFamilyEntry): PageMetadata {
+  const fullName = `${family.manufacturerName} ${family.name}`;
+  const variants = family.gpus.map((gpu) => gpu.metadata.name).join(", ");
+  return {
+    title: `${fullName} cloud pricing and specs | ${SITE_NAME}`,
+    description: compact(
+      [
+        `Compare on-demand ${fullName} pricing across ${plural(family.providerCount, "provider")} and ${plural(family.regionCount, "region")}.`,
+        `Variants: ${variants}.`,
+      ],
+      280,
+    ),
+  };
+}
+
 function manufacturerPageMetadata(
   manufacturer: ManufacturerEntry,
 ): PageMetadata {
@@ -738,12 +883,12 @@ function regionPageMetadata(region: RegionEntry): PageMetadata {
   return { title, description };
 }
 
-function GpusPage(props: { gpus: GpuEntry[] }) {
-  return <GpuTable gpus={props.gpus} title="GPUs" hideHeading />;
+function GpusPage(props: { families: GpuFamilyEntry[] }) {
+  return <GpuTable families={props.families} title="GPUs" hideHeading />;
 }
 
 function GpuTable(props: {
-  gpus: GpuEntry[];
+  families: GpuFamilyEntry[];
   title: string;
   hideHeading?: boolean;
   showManufacturer?: boolean;
@@ -753,7 +898,7 @@ function GpuTable(props: {
   return (
     <TableSection
       title={props.title}
-      count={props.gpus.length}
+      count={props.families.length}
       columns={columns}
       hideHeading={props.hideHeading}
     >
@@ -772,44 +917,66 @@ function GpuTable(props: {
           </tr>
         </thead>
         <tbody>
-          {props.gpus.map((gpu) => {
-            const metadata = gpu.metadata;
+          {props.families.map((family) => {
+            const single = family.gpus.length === 1 ? family.gpus[0] : undefined;
+            const href = single ? gpuHref(single.id) : familyHref(family);
+            const vram = familyValues(family.gpus, (gpu) => gpu.metadata.vram_gb);
+            const architecture = familyValues(
+              family.gpus,
+              (gpu) => gpu.metadata.architecture,
+            );
+            const memory = familyValues(
+              family.gpus,
+              (gpu) => gpu.metadata.memory_type,
+            );
+            const interconnect = familyValues(
+              family.gpus,
+              (gpu) => gpu.metadata.interconnect,
+            );
+
             return (
               <tr
-                data-search={`${metadata.name} ${gpu.id} ${gpu.manufacturerName} ${metadata.architecture ?? ""} ${metadata.memory_type ?? ""} ${metadata.interconnect ?? ""}`}
+                data-search={`${family.name} ${family.manufacturerName} ${family.gpus.map((gpu) => `${gpu.metadata.name} ${gpu.id}`).join(" ")} ${architecture.join(" ")} ${memory.join(" ")} ${interconnect.join(" ")}`}
               >
-                <td data-sort={metadata.name}>
-                  <a class="primary-link" href={gpuHref(gpu.id)}>
-                    {metadata.name}
+                <td data-sort={family.name}>
+                  <a class="primary-link" href={href}>
+                    {family.name}
                   </a>
-                  <span class="subtle mono">{gpu.id}</span>
+                  <span class="subtle mono">
+                    {single
+                      ? single.id
+                      : plural(family.gpus.length, "variant")}
+                  </span>
                 </td>
                 {showManufacturer && (
-                  <td data-sort={gpu.manufacturerName}>
+                  <td data-sort={family.manufacturerName}>
                     <ManufacturerLink
-                      manufacturerId={gpu.manufacturerId}
-                      manufacturerName={gpu.manufacturerName}
+                      manufacturerId={family.manufacturerId}
+                      manufacturerName={family.manufacturerName}
                     />
                   </td>
                 )}
-                <td data-sort={metadata.architecture ?? ""}>
-                  {metadata.architecture ?? DASH}
+                <td data-sort={architecture[0] ?? ""}>
+                  {architecture.join(" / ") || DASH}
                 </td>
-                <td data-sort={sortNumber(metadata.vram_gb)}>
-                  {formatVram(metadata.vram_gb)}
+                {/* Numeric specs sort on the family's best, prices on its cheapest. */}
+                <td data-sort={sortNumber(maxDefined(vram))}>
+                  {vram.length > 0
+                    ? `${vram.map((value) => formatNumber(value)).join(" / ")} GB`
+                    : DASH}
                 </td>
-                <td data-sort={metadata.memory_type ?? ""}>
-                  {metadata.memory_type ?? DASH}
+                <td data-sort={memory[0] ?? ""}>{memory.join(" / ") || DASH}</td>
+                <td data-sort={interconnect[0] ?? ""}>
+                  {interconnect.join(" / ") || DASH}
                 </td>
-                <td data-sort={metadata.interconnect ?? ""}>
-                  {metadata.interconnect ?? DASH}
+                <td data-sort={String(family.providerCount)}>
+                  {family.providerCount}
                 </td>
-                <td data-sort={String(gpu.providerCount)}>
-                  <a href={`${gpuHref(gpu.id)}#offerings`}>{gpu.providerCount}</a>
+                <td data-sort={String(family.regionCount)}>
+                  {family.regionCount}
                 </td>
-                <td data-sort={String(gpu.regionCount)}>{gpu.regionCount}</td>
-                <td data-sort={sortNumber(gpu.minPricePerGpuHour)}>
-                  {formatPerGpu(gpu.minPricePerGpuHour)}
+                <td data-sort={sortNumber(family.minPricePerGpuHour)}>
+                  {formatPerGpu(family.minPricePerGpuHour)}
                 </td>
               </tr>
             );
@@ -1060,6 +1227,42 @@ function ProviderPage(props: {
   );
 }
 
+function FamilyPage(props: { family: GpuFamilyEntry }) {
+  const { family } = props;
+  return (
+    <Fragment>
+      <DetailHeader
+        eyebrow={
+          <Fragment>
+            <a href="/gpus">GPUs</a>
+            <span>/</span>
+            <a href={manufacturerHref(family.manufacturerId)}>
+              {family.manufacturerName}
+            </a>
+          </Fragment>
+        }
+        title={family.name}
+        code={family.id}
+        copyValue={family.id}
+      />
+      <Facts
+        items={[
+          ["Variants", family.gpus.length],
+          ["Providers", family.providerCount],
+          ["Regions", family.regionCount],
+          ["Best $/GPU/hr", formatPerGpu(family.minPricePerGpuHour)],
+        ]}
+      />
+      {/* Each variant as its own family of one, so the table shows exact specs. */}
+      <GpuTable
+        families={family.gpus.map((gpu) => singletonFamily(gpu))}
+        title="Variants"
+        showManufacturer={false}
+      />
+    </Fragment>
+  );
+}
+
 function ManufacturerPage(props: { manufacturer: ManufacturerEntry }) {
   const { manufacturer } = props;
   return (
@@ -1079,7 +1282,7 @@ function ManufacturerPage(props: { manufacturer: ManufacturerEntry }) {
         ]}
       />
       <GpuTable
-        gpus={manufacturer.gpus}
+        families={buildFamilyEntries(manufacturer.gpus)}
         title="GPUs"
         showManufacturer={false}
       />
@@ -1759,6 +1962,10 @@ function minDefined(values: Array<number | undefined>) {
   return result;
 }
 
+function maxDefined(values: number[]) {
+  return values.length === 0 ? undefined : Math.max(...values);
+}
+
 function minValue(current: number | undefined, next: number | undefined) {
   if (next === undefined) return current;
   if (current === undefined) return next;
@@ -1817,6 +2024,11 @@ function gpuHref(id: string) {
 /** Manufacturers sit above their GPUs: /gpus/nvidia lists every NVIDIA GPU. */
 function manufacturerHref(id: string) {
   return `/gpus/${encodeURIComponent(id)}`;
+}
+
+/** Families sit beside their variants: /gpus/nvidia/a100 lists the A100s. */
+function familyHref(family: GpuFamilyEntry) {
+  return `/gpus/${encodedPath(family.id)}`;
 }
 
 function providerHref(id: string) {

@@ -1,5 +1,6 @@
 name = "A100 80GB PCIe"
 description = "Ampere datacenter GPU in PCIe form factor; same compute as the SXM part at lower power and bandwidth."
+family = "a100"
 architecture = "Ampere"
 vram_gb = 80
 memory_type = "HBM2e"

@@ -1,5 +1,6 @@
 name = "A100 40GB SXM"
 description = "The original 40 GB Ampere SXM4 module; HBM2 rather than the 80 GB part's HBM2e."
+family = "a100"
 architecture = "Ampere"
 vram_gb = 40
 memory_type = "HBM2"
