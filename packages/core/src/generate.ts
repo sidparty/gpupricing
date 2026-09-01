@@ -229,7 +229,7 @@ function mergeBaseGpu(
   }
 
   const { base_gpu: _baseGpu, base_gpu_omit: omit, ...overrides } = offering;
-  const merged: Record<string, unknown> = structuredClone(
+  const merged: TomlTable = structuredClone(
     mergeDeep(inheritableGpuMetadata(base), overrides),
   );
 
@@ -245,27 +245,40 @@ function inheritableGpuMetadata(gpu: GpuMetadata) {
   );
 }
 
-function applyOmit(target: Record<string, unknown>, paths: string[]) {
+/** A value in a TOML document tree. */
+type TomlValue = string | number | boolean | Date | TomlValue[] | TomlTable;
+
+/**
+ * A TOML table. This is the shape `base_gpu` inheritance works on: the merged
+ * tree after `mergeDeep` and before `GpuOffering` parses it.
+ */
+interface TomlTable {
+  [key: string]: TomlValue;
+}
+
+/**
+ * Decode a TOML value as a nested table. Leaves, arrays and dates are not
+ * tables, so a dot-path cannot descend through them.
+ */
+function isTomlTable(value: TomlValue | undefined): value is TomlTable {
+  return (
+    value instanceof Object && !Array.isArray(value) && !(value instanceof Date)
+  );
+}
+
+function applyOmit(target: TomlTable, paths: string[]) {
   omitLoop: for (const omit of paths) {
     const parts = omit.split(".");
-    const parents: Array<{
-      value: Record<string, unknown>;
-      key: string;
-    }> = [];
+    const parents: Array<{ value: TomlTable; key: string }> = [];
     let current = target;
 
     for (const part of parts.slice(0, -1)) {
       const next = current[part];
-      if (
-        next === undefined ||
-        next === null ||
-        typeof next !== "object" ||
-        Array.isArray(next)
-      ) {
+      if (!isTomlTable(next)) {
         continue omitLoop;
       }
       parents.push({ value: current, key: part });
-      current = next as Record<string, unknown>;
+      current = next;
     }
 
     const lastPart = parts.at(-1);
@@ -279,13 +292,7 @@ function applyOmit(target: Record<string, unknown>, paths: string[]) {
       const parent = parents[index];
       if (parent === undefined) continue;
       const value = parent.value[parent.key];
-      if (
-        value === null ||
-        value === undefined ||
-        typeof value !== "object" ||
-        Array.isArray(value) ||
-        Object.keys(value).length > 0
-      ) {
+      if (!isTomlTable(value) || Object.keys(value).length > 0) {
         break;
       }
       delete parent.value[parent.key];
