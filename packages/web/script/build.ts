@@ -59,7 +59,8 @@ try {
     }
   }
 } catch (error) {
-  if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  const code = error instanceof Error && "code" in error ? error.code : undefined;
+  if (code !== "ENOENT") throw error;
 }
 
 const template = await Bun.file("./dist/index.html").text();

@@ -4,7 +4,9 @@
 import { generateCatalog } from "@models.dev/core";
 import type { GpuMetadata, GpuOffering, Provider, Region } from "@models.dev/core";
 import { Fragment } from "hono/jsx";
+import type { Child } from "hono/jsx";
 import { renderToString } from "hono/jsx/dom/server";
+import { z } from "zod";
 import { existsSync, readFileSync } from "fs";
 import path from "path";
 import {
@@ -21,6 +23,9 @@ import {
   sortNumber,
   titleCase,
 } from "./shared.js";
+
+/** The only field this pass reads from a raw offering TOML document. */
+const OfferingBaseGpu = z.object({ base_gpu: z.string() });
 
 const root = path.join(import.meta.dir, "..", "..", "..");
 const Catalog = await generateCatalog(root);
@@ -139,17 +144,17 @@ interface SearchIndexItem {
   description?: string;
 }
 
-const MANUFACTURER_NAMES: Record<string, string> = {
-  nvidia: "NVIDIA",
-  amd: "AMD",
-  intel: "Intel",
-};
+const MANUFACTURER_NAMES = new Map([
+  ["nvidia", "NVIDIA"],
+  ["amd", "AMD"],
+  ["intel", "Intel"],
+]);
 
-const PROVIDER_TYPE_LABELS: Record<string, string> = {
-  cloud: "Cloud",
-  neocloud: "Neocloud",
-  marketplace: "Marketplace",
-};
+const PROVIDER_TYPE_LABELS = new Map([
+  ["cloud", "Cloud"],
+  ["neocloud", "Neocloud"],
+  ["marketplace", "Marketplace"],
+]);
 
 // Preferred display order for top-level region areas on the regions page.
 const AREA_ORDER = [
@@ -224,10 +229,11 @@ async function loadProviderBaseGpuRefs(root: string) {
       with: {
         type: "toml",
       },
-    }).then((mod) => mod.default as { base_gpu?: unknown });
+    }).then((mod) => mod.default);
 
-    if (typeof toml.base_gpu === "string") {
-      refs.set(`${providerId}/${offeringId}`, toml.base_gpu);
+    const parsed = OfferingBaseGpu.safeParse(toml);
+    if (parsed.success) {
+      refs.set(`${providerId}/${offeringId}`, parsed.data.base_gpu);
     }
   }
 
@@ -778,7 +784,7 @@ function buildPages() {
 
 function renderPage(
   active: ActiveSection,
-  content: unknown,
+  content: Child,
   metadata: PageMetadata = DEFAULT_PAGE_METADATA,
 ): RenderedPage {
   return {
@@ -1979,11 +1985,11 @@ function maxDate(current: string | undefined, next: string | undefined) {
 }
 
 function manufacturerName(id: string) {
-  return MANUFACTURER_NAMES[id] ?? titleCase(id);
+  return MANUFACTURER_NAMES.get(id) ?? titleCase(id);
 }
 
 function providerTypeLabel(type: Provider["type"]) {
-  return PROVIDER_TYPE_LABELS[type] ?? titleCase(type);
+  return PROVIDER_TYPE_LABELS.get(type) ?? titleCase(type);
 }
 
 function regionName(slug: string) {

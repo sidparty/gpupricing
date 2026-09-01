@@ -25,23 +25,26 @@ interface SearchResult {
   score: number;
 }
 
-const helpModal = document.getElementById("modal") as HTMLDialogElement | null;
+/**
+ * Look up an element by id and confirm it is the expected kind. Returns null
+ * when the id is absent or the markup changed shape.
+ */
+function elementById<T extends Element>(id: string, kind: new () => T): T | null {
+  const element = document.getElementById(id);
+  return element instanceof kind ? element : null;
+}
+
+const helpModal = elementById("modal", HTMLDialogElement);
 const modalClose = document.getElementById("close");
 const help = document.getElementById("help");
-const mobileMenu = document.getElementById(
-  "mobile-menu",
-) as HTMLDialogElement | null;
+const mobileMenu = elementById("mobile-menu", HTMLDialogElement);
 const mobileMenuTrigger = document.getElementById("mobile-menu-trigger");
 const mobileMenuClose = document.getElementById("mobile-menu-close");
 const mobileSearchTrigger = document.getElementById("mobile-search-trigger");
 const mobileHelpTrigger = document.getElementById("mobile-help-trigger");
-const searchModal = document.getElementById(
-  "search-modal",
-) as HTMLDialogElement | null;
+const searchModal = elementById("search-modal", HTMLDialogElement);
 const searchTrigger = document.getElementById("search-trigger");
-const searchInput = document.getElementById(
-  "search-input",
-) as HTMLInputElement | null;
+const searchInput = elementById("search-input", HTMLInputElement);
 const searchResults = document.getElementById("search-results");
 const searchCount = document.getElementById("search-count");
 const searchEmpty = document.getElementById("search-empty");
@@ -99,6 +102,9 @@ function parseSearchIndex() {
 
   try {
     const parsed = JSON.parse(index);
+    // SAFETY: #search-index is emitted by our own renderer (SearchDialog in
+    // render.tsx) as a JSON array of SearchIndexItem. It is first-party build
+    // output, not user input, so the element shape matches the interface.
     return Array.isArray(parsed) ? (parsed as SearchIndexItem[]) : [];
   } catch {
     return [];
