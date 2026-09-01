@@ -14,6 +14,7 @@
     }
   },
   "scripts": {
+    "lint": "oxlint",
     "test": "bun test",
     "validate": "bun ./packages/core/script/validate.ts",
     "build": "cd packages/web && bun run build",
@@ -23,5 +24,9 @@
   "dependencies": {
     "@cloudflare/workers-types": "^4.20260424.1",
     "sst": "3.17.23"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "1.81.0",
+    "oxlint": "1.81.0"
   }
 }
