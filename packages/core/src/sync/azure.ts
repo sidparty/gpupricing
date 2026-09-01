@@ -15,6 +15,8 @@
  * (eastus and eastus2 are both us-east) and each keeps its own price.
  */
 
+import { z } from "zod";
+
 export interface AzureInstance {
   /** Azure ARM SKU name, e.g. "Standard_ND96isr_H100_v5". */
   armSkuName: string;
@@ -442,70 +444,81 @@ const INSTANCES: AzureInstance[] = [
 // Azure region code -> normalized slug + display name + area. Unmapped regions
 // are skipped and reported by the runner. Several codes intentionally share a
 // slug; each still gets its own availability entry and price.
-const AZURE_REGIONS: Record<string, AzureRegion> = {
-  // North America
-  eastus: { slug: "us-east", name: "US East", area: "North America" },
-  eastus2: { slug: "us-east", name: "US East", area: "North America" },
-  westus: { slug: "us-west", name: "US West", area: "North America" },
-  westus2: { slug: "us-west", name: "US West", area: "North America" },
-  westus3: { slug: "us-west", name: "US West", area: "North America" },
-  westcentralus: { slug: "us-west", name: "US West", area: "North America" },
-  centralus: { slug: "us-central", name: "US Central", area: "North America" },
-  northcentralus: { slug: "us-central", name: "US Central", area: "North America" },
-  southcentralus: { slug: "us-central", name: "US Central", area: "North America" },
-  southcentralus2: { slug: "us-central", name: "US Central", area: "North America" },
-  canadacentral: { slug: "ca-central", name: "Canada Central", area: "North America" },
-  canadaeast: { slug: "ca-central", name: "Canada Central", area: "North America" },
-  mexicocentral: { slug: "mx-central", name: "Mexico Central", area: "North America" },
-  // Europe
-  westeurope: { slug: "eu-west", name: "EU West", area: "Europe" },
-  northeurope: { slug: "eu-west", name: "EU West", area: "Europe" },
-  francecentral: { slug: "eu-west", name: "EU West", area: "Europe" },
-  spaincentral: { slug: "eu-west", name: "EU West", area: "Europe" },
-  swedencentral: { slug: "eu-north", name: "EU North", area: "Europe" },
-  norwayeast: { slug: "eu-north", name: "EU North", area: "Europe" },
-  germanywestcentral: { slug: "eu-central", name: "EU Central", area: "Europe" },
-  germanynorth: { slug: "eu-central", name: "EU Central", area: "Europe" },
-  polandcentral: { slug: "eu-central", name: "EU Central", area: "Europe" },
-  switzerlandnorth: { slug: "eu-central", name: "EU Central", area: "Europe" },
-  switzerlandwest: { slug: "eu-central", name: "EU Central", area: "Europe" },
-  italynorth: { slug: "eu-central", name: "EU Central", area: "Europe" },
-  uksouth: { slug: "uk-south", name: "UK South", area: "Europe" },
-  ukwest: { slug: "uk-south", name: "UK South", area: "Europe" },
-  // Middle East
-  uaenorth: { slug: "me-central", name: "UAE", area: "Middle East" },
-  uaecentral: { slug: "me-central", name: "UAE", area: "Middle East" },
-  qatarcentral: { slug: "me-central", name: "UAE", area: "Middle East" },
-  israelcentral: { slug: "me-west", name: "Middle East West", area: "Middle East" },
-  // Africa
-  southafricanorth: { slug: "af-south", name: "Africa South", area: "Africa" },
-  southafricawest: { slug: "af-south", name: "Africa South", area: "Africa" },
-  // Asia Pacific
-  japaneast: { slug: "ap-northeast", name: "Asia Northeast", area: "Asia Pacific" },
-  japanwest: { slug: "ap-northeast", name: "Asia Northeast", area: "Asia Pacific" },
-  koreacentral: { slug: "ap-northeast", name: "Asia Northeast", area: "Asia Pacific" },
-  koreasouth: { slug: "ap-northeast", name: "Asia Northeast", area: "Asia Pacific" },
-  eastasia: { slug: "ap-east", name: "Asia East", area: "Asia Pacific" },
-  southeastasia: { slug: "ap-southeast", name: "Asia Southeast", area: "Asia Pacific" },
-  indonesiacentral: { slug: "ap-southeast", name: "Asia Southeast", area: "Asia Pacific" },
-  malaysiawest: { slug: "ap-southeast", name: "Asia Southeast", area: "Asia Pacific" },
-  centralindia: { slug: "ap-south", name: "Asia South", area: "Asia Pacific" },
-  southindia: { slug: "ap-south", name: "Asia South", area: "Asia Pacific" },
-  australiaeast: { slug: "au-east", name: "Australia East", area: "Asia Pacific" },
-  australiasoutheast: { slug: "au-east", name: "Australia East", area: "Asia Pacific" },
-  // South America
-  brazilsouth: { slug: "sa-east", name: "South America East", area: "South America" },
-};
+const AZURE_REGIONS = new Map<string, AzureRegion>(
+  Object.entries({
+    // North America
+    eastus: { slug: "us-east", name: "US East", area: "North America" },
+    eastus2: { slug: "us-east", name: "US East", area: "North America" },
+    westus: { slug: "us-west", name: "US West", area: "North America" },
+    westus2: { slug: "us-west", name: "US West", area: "North America" },
+    westus3: { slug: "us-west", name: "US West", area: "North America" },
+    westcentralus: { slug: "us-west", name: "US West", area: "North America" },
+    centralus: { slug: "us-central", name: "US Central", area: "North America" },
+    northcentralus: { slug: "us-central", name: "US Central", area: "North America" },
+    southcentralus: { slug: "us-central", name: "US Central", area: "North America" },
+    southcentralus2: { slug: "us-central", name: "US Central", area: "North America" },
+    canadacentral: { slug: "ca-central", name: "Canada Central", area: "North America" },
+    canadaeast: { slug: "ca-central", name: "Canada Central", area: "North America" },
+    mexicocentral: { slug: "mx-central", name: "Mexico Central", area: "North America" },
+    // Europe
+    westeurope: { slug: "eu-west", name: "EU West", area: "Europe" },
+    northeurope: { slug: "eu-west", name: "EU West", area: "Europe" },
+    francecentral: { slug: "eu-west", name: "EU West", area: "Europe" },
+    spaincentral: { slug: "eu-west", name: "EU West", area: "Europe" },
+    swedencentral: { slug: "eu-north", name: "EU North", area: "Europe" },
+    norwayeast: { slug: "eu-north", name: "EU North", area: "Europe" },
+    germanywestcentral: { slug: "eu-central", name: "EU Central", area: "Europe" },
+    germanynorth: { slug: "eu-central", name: "EU Central", area: "Europe" },
+    polandcentral: { slug: "eu-central", name: "EU Central", area: "Europe" },
+    switzerlandnorth: { slug: "eu-central", name: "EU Central", area: "Europe" },
+    switzerlandwest: { slug: "eu-central", name: "EU Central", area: "Europe" },
+    italynorth: { slug: "eu-central", name: "EU Central", area: "Europe" },
+    uksouth: { slug: "uk-south", name: "UK South", area: "Europe" },
+    ukwest: { slug: "uk-south", name: "UK South", area: "Europe" },
+    // Middle East
+    uaenorth: { slug: "me-central", name: "UAE", area: "Middle East" },
+    uaecentral: { slug: "me-central", name: "UAE", area: "Middle East" },
+    qatarcentral: { slug: "me-central", name: "UAE", area: "Middle East" },
+    israelcentral: { slug: "me-west", name: "Middle East West", area: "Middle East" },
+    // Africa
+    southafricanorth: { slug: "af-south", name: "Africa South", area: "Africa" },
+    southafricawest: { slug: "af-south", name: "Africa South", area: "Africa" },
+    // Asia Pacific
+    japaneast: { slug: "ap-northeast", name: "Asia Northeast", area: "Asia Pacific" },
+    japanwest: { slug: "ap-northeast", name: "Asia Northeast", area: "Asia Pacific" },
+    koreacentral: { slug: "ap-northeast", name: "Asia Northeast", area: "Asia Pacific" },
+    koreasouth: { slug: "ap-northeast", name: "Asia Northeast", area: "Asia Pacific" },
+    eastasia: { slug: "ap-east", name: "Asia East", area: "Asia Pacific" },
+    southeastasia: { slug: "ap-southeast", name: "Asia Southeast", area: "Asia Pacific" },
+    indonesiacentral: { slug: "ap-southeast", name: "Asia Southeast", area: "Asia Pacific" },
+    malaysiawest: { slug: "ap-southeast", name: "Asia Southeast", area: "Asia Pacific" },
+    centralindia: { slug: "ap-south", name: "Asia South", area: "Asia Pacific" },
+    southindia: { slug: "ap-south", name: "Asia South", area: "Asia Pacific" },
+    australiaeast: { slug: "au-east", name: "Australia East", area: "Asia Pacific" },
+    australiasoutheast: { slug: "au-east", name: "Australia East", area: "Asia Pacific" },
+    // South America
+    brazilsouth: { slug: "sa-east", name: "South America East", area: "South America" },
+  }),
+);
 
 const API_BASE = "https://prices.azure.com/api/retail/prices";
 
-interface RetailItem {
-  armSkuName: string;
-  armRegionName: string;
-  skuName: string;
-  productName: string;
-  retailPrice: number;
-}
+/** One priced SKU row from the Azure Retail Prices API. */
+const RetailItem = z.object({
+  armSkuName: z.string(),
+  armRegionName: z.string(),
+  skuName: z.string(),
+  productName: z.string(),
+  retailPrice: z.number(),
+});
+
+/** One page of the paginated Retail Prices response. */
+const RetailPage = z.object({
+  Items: z.array(RetailItem),
+  NextPageLink: z.string().optional(),
+});
+
+type RetailItem = z.infer<typeof RetailItem>;
 
 async function fetchSku(armSkuName: string): Promise<RetailItem[]> {
   const filter = `serviceName eq 'Virtual Machines' and armSkuName eq '${armSkuName}' and priceType eq 'Consumption'`;
@@ -519,12 +532,15 @@ async function fetchSku(armSkuName: string): Promise<RetailItem[]> {
         `Azure Retail Prices API returned ${response.status} for ${armSkuName}`,
       );
     }
-    const data = (await response.json()) as {
-      Items: RetailItem[];
-      NextPageLink?: string;
-    };
-    items.push(...data.Items);
-    url = data.NextPageLink;
+    const page = RetailPage.safeParse(await response.json());
+    if (!page.success) {
+      throw new Error(
+        `Azure Retail Prices API returned an unexpected shape for ${armSkuName}`,
+        { cause: { url, error: page.error } },
+      );
+    }
+    items.push(...page.data.Items);
+    url = page.data.NextPageLink;
   }
   return items;
 }
@@ -534,10 +550,13 @@ async function fetchSku(armSkuName: string): Promise<RetailItem[]> {
  * Linux on-demand only; Windows rows carry a licence premium, and Spot /
  * Low Priority rows are folded in as the region's spot price.
  */
-function toAvailability(items: RetailItem[]): {
+interface AvailabilityResult {
   availability: OfferingAvailability[];
+  /** Azure region codes with a price but no entry in AZURE_REGIONS. */
   unmapped: Set<string>;
-} {
+}
+
+function toAvailability(items: RetailItem[]): AvailabilityResult {
   const byRegion = new Map<string, { onDemand?: number; spot?: number }>();
   for (const item of items) {
     if (item.productName.includes("Windows")) continue;
@@ -552,7 +571,7 @@ function toAvailability(items: RetailItem[]): {
   const unmapped = new Set<string>();
   for (const [azureRegion, price] of byRegion) {
     if (price.onDemand === undefined) continue;
-    const region = AZURE_REGIONS[azureRegion];
+    const region = AZURE_REGIONS.get(azureRegion);
     if (!region) {
       unmapped.add(azureRegion);
       continue;
@@ -595,7 +614,7 @@ export async function syncAzure(): Promise<AzureSyncResult> {
       continue;
     }
     for (const entry of availability) {
-      const region = AZURE_REGIONS[entry.providerRegion];
+      const region = AZURE_REGIONS.get(entry.providerRegion);
       if (region) regions.set(region.slug, region);
     }
     offerings.push({

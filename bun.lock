@@ -39,6 +39,7 @@
         "@models.dev/core": "workspace:*",
         "@tanstack/virtual-core": "^3.14.0",
         "hono": "^4.8.0",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@types/bun": "^1.2.16",
