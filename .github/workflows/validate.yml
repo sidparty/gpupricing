@@ -5,8 +5,33 @@ on:
     branches: [dev]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      # oxlint shells out to `node` to run the anti-slop JS plugin, and a
+      # TypeScript plugin file needs Node >= 22.18. Pin it rather than rely
+      # on whichever Node the runner image happens to ship.
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run oxlint
+        run: bun run lint
+
   validate:
-    if: github.repository == 'anomalyco/models.dev'
     runs-on: ubuntu-latest
 
     steps:
