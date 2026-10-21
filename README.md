@@ -29,6 +29,8 @@ Data lives in the repo as TOML files, organized into three directories:
 
 Every price is **per instance per hour**. The per-GPU price shown throughout the
 site is derived at render time as `hourly ÷ gpus_per_instance`.
+`gpus_per_instance` can be fractional for partitioned GPUs (e.g. `0.25` of a
+GPU), so a quarter-GPU instance prices at 4× its hourly rate per GPU.
 
 ### Canonical GPU — `gpus/<manufacturer>/<gpu>.toml`
 
@@ -38,6 +40,7 @@ the file. The manufacturer is the first path segment.
 ```toml
 name = "NVIDIA H100 SXM"
 description = "Hopper datacenter GPU in SXM5 form factor."
+family = "h100"              # optional; groups variants into one table row
 architecture = "Hopper"
 vram_gb = 80                 # per single GPU
 memory_type = "HBM3"
@@ -92,14 +95,18 @@ offering to the closest slug; the native data-center name goes in
 `base_gpu` merge semantics mirror the classic `base_model` machinery: nested
 tables (`[compute]`) are deep-merged, arrays and primitives are replaced by the
 offering, and `base_gpu_omit = ["compute.int8"]` deletes inherited dot-paths
-after the merge. The resolved provider JSON contains no `base_gpu` field.
+after the merge. `links` is never inherited. The resolved provider JSON contains
+no `base_gpu` field.
 
 ### Region — `regions/<slug>/region.toml`
 
 ```toml
-name = "North America"
-location = "United States"
+name = "US Central"
+location = "Kansas City, Missouri, US" # optional
+area = "North America"                 # optional; groups the regions view
 ```
+
+Only `name` is required.
 
 ## Contributing
 
