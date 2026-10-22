@@ -1,15 +1,16 @@
-# Source: https://www.coreweave.com/pricing (captured 2026-07).
-# On-demand price is identical across regions; spot is offered in North America only.
+# AUTO-SYNCED from https://www.coreweave.com/pricing on 2026-10.
+# Product->GPU mapping and fabric are curated in packages/core/src/sync/coreweave.ts; do not edit here.
 base_gpu = "nvidia/l40"
 instance = "L40"
 gpus_per_instance = 8
 vcpus = 128
 memory_gb = 1024
-local_storage_gb = 7_680
-fabric = "Ethernet / InfiniBand (PCIe)"
+local_storage_gb = 7680
+fabric = "Ethernet (PCIe)"
+last_updated = "2026-10"
 
 [cost]
-hourly = 10.00
+hourly = 10
 
 [[availability]]
 region = "north-america"

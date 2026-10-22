@@ -1,15 +1,16 @@
-# Source: https://www.coreweave.com/pricing (captured 2026-07).
-# On-demand price is identical across North America and Europe; spot differs by region.
+# AUTO-SYNCED from https://www.coreweave.com/pricing on 2026-10.
+# Product->GPU mapping and fabric are curated in packages/core/src/sync/coreweave.ts; do not edit here.
 base_gpu = "nvidia/a100-sxm"
 instance = "A100"
 gpus_per_instance = 8
 vcpus = 128
 memory_gb = 2048
-local_storage_gb = 7_680
-fabric = "NVLink + HDR InfiniBand"
+local_storage_gb = 7680
+fabric = "NVLink + Ethernet"
+last_updated = "2026-10"
 
 [cost]
-hourly = 21.60
+hourly = 21.6
 
 [[availability]]
 region = "north-america"

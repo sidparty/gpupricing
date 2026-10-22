@@ -17,6 +17,7 @@ import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 
 import { syncAzure, type AzureOffering } from "../src/sync/azure.js";
+import { offeringToml, tomlString } from "../src/sync/toml.js";
 
 const root = path.join(import.meta.dirname, "..", "..", "..");
 const providerDir = path.join(root, "providers", "azure");
@@ -28,45 +29,15 @@ const AZURE_LOGO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" 
 </svg>
 `;
 
-function tomlString(value: string): string {
-  return `"${value.replace(/"/g, '\\"')}"`;
-}
-
-function offeringToml(offering: AzureOffering): string {
-  const lines: string[] = [];
-  lines.push(
-    `# AUTO-SYNCED from the Azure Retail Prices API (prices.azure.com) on ${stamp}.`,
-  );
-  lines.push(
-    `# Instance->GPU mapping is curated in packages/core/src/sync/azure.ts; do not edit here.`,
-  );
-  lines.push(`base_gpu = ${tomlString(offering.baseGpu)}`);
-  lines.push(`instance = ${tomlString(offering.instance)}`);
-  // Fractional GPU counts (partitioned GPUs) round to 6dp so 1/6 stays exact
-  // enough for per-GPU price math without emitting a repeating decimal.
-  const gpus = Number.isInteger(offering.gpusPerInstance)
-    ? String(offering.gpusPerInstance)
-    : String(Math.round(offering.gpusPerInstance * 1e6) / 1e6);
-  lines.push(`gpus_per_instance = ${gpus}`);
-  if (offering.vramGb !== undefined) lines.push(`vram_gb = ${offering.vramGb}`);
-  if (offering.vcpus !== undefined) lines.push(`vcpus = ${offering.vcpus}`);
-  if (offering.memoryGb !== undefined)
-    lines.push(`memory_gb = ${offering.memoryGb}`);
-  if (offering.localStorageGb !== undefined)
-    lines.push(`local_storage_gb = ${offering.localStorageGb}`);
-  if (offering.fabric !== undefined)
-    lines.push(`fabric = ${tomlString(offering.fabric)}`);
-  lines.push(`last_updated = ${tomlString(stamp)}`);
-  for (const entry of offering.availability) {
-    lines.push("");
-    lines.push("[[availability]]");
-    lines.push(`region = ${tomlString(entry.region)}`);
-    lines.push(`provider_region = ${tomlString(entry.providerRegion)}`);
-    lines.push(`hourly = ${entry.hourly}`);
-    if (entry.spotHourly !== undefined)
-      lines.push(`spot_hourly = ${entry.spotHourly}`);
-  }
-  return lines.join("\n") + "\n";
+function azureToml(offering: AzureOffering): string {
+  return offeringToml({
+    ...offering,
+    comments: [
+      `AUTO-SYNCED from the Azure Retail Prices API (prices.azure.com) on ${stamp}.`,
+      "Instance->GPU mapping is curated in packages/core/src/sync/azure.ts; do not edit here.",
+    ],
+    lastUpdated: stamp,
+  });
 }
 
 async function main() {
@@ -103,7 +74,7 @@ async function main() {
   for (const offering of offerings) {
     await Bun.write(
       path.join(gpusDir, `${offering.id}.toml`),
-      offeringToml(offering),
+      azureToml(offering),
     );
     console.log(
       `  = providers/azure/gpus/${offering.id}.toml (${offering.availability.length} regions)`,
