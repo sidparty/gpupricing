@@ -1,12 +1,13 @@
-# Source: https://www.coreweave.com/pricing (captured 2026-07).
-# On-demand is "Contact sales" (no listed hourly); spot pricing is published per region.
+# AUTO-SYNCED from https://www.coreweave.com/pricing on 2026-10.
+# Product->GPU mapping and fabric are curated in packages/core/src/sync/coreweave.ts; do not edit here.
 base_gpu = "nvidia/b300"
 instance = "HGX B300"
 gpus_per_instance = 8
 vcpus = 192
 memory_gb = 4096
-local_storage_gb = 61_440
-fabric = "NVLink 5 + Quantum InfiniBand"
+local_storage_gb = 61440
+fabric = "NVLink 5 + Quantum-X800 InfiniBand"
+last_updated = "2026-10"
 
 [[availability]]
 region = "north-america"
@@ -14,4 +15,4 @@ spot_hourly = 35.84
 
 [[availability]]
 region = "europe"
-spot_hourly = 36.70
+spot_hourly = 36.7

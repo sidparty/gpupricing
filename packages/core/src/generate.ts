@@ -144,34 +144,13 @@ async function generateProviders(
           type: "toml",
         },
       }).then((mod) => mod.default);
-      toml.id = offeringID;
-
-      let offering: GpuOffering;
-      if (toml.base_gpu !== undefined) {
-        const base = BaseGpuOffering.safeParse(toml);
-        if (!base.success) {
-          base.error.cause = { offeringPath, toml };
-          throw base.error;
-        }
-
-        const merged = mergeBaseGpu(base.data, gpus, offeringPath);
-        const parsed = GpuOffering.safeParse(merged);
-        if (!parsed.success) {
-          parsed.error.cause = { offeringPath, toml: merged };
-          throw parsed.error;
-        }
-        offering = parsed.data;
-      } else {
-        const parsed = GpuOffering.safeParse(toml);
-        if (!parsed.success) {
-          parsed.error.cause = { offeringPath, toml };
-          throw parsed.error;
-        }
-        offering = parsed.data;
-      }
-
-      validateAvailability(offering, regions, offeringPath);
-      provider.data.gpus[offeringID] = offering;
+      provider.data.gpus[offeringID] = resolveOffering(
+        toml,
+        offeringID,
+        offeringPath,
+        gpus,
+        regions,
+      );
     }
 
     result[providerID] = provider.data;
@@ -196,6 +175,49 @@ async function generateProviders(
   }
 
   return result;
+}
+
+/**
+ * Resolve one offering from its parsed TOML: inject the id, apply `base_gpu`
+ * inheritance, parse it as a `GpuOffering`, and check that every availability
+ * region exists. The CoreWeave sync runner calls this to check each file
+ * before it writes one.
+ */
+export function resolveOffering(
+  toml: TomlTable,
+  offeringID: string,
+  offeringPath: string,
+  gpus: Record<string, GpuMetadata>,
+  regions: Record<string, Region>,
+): GpuOffering {
+  const source = { ...toml, id: offeringID };
+
+  let offering: GpuOffering;
+  if (toml.base_gpu !== undefined) {
+    const base = BaseGpuOffering.safeParse(source);
+    if (!base.success) {
+      base.error.cause = { offeringPath, toml: source };
+      throw base.error;
+    }
+
+    const merged = mergeBaseGpu(base.data, gpus, offeringPath);
+    const parsed = GpuOffering.safeParse(merged);
+    if (!parsed.success) {
+      parsed.error.cause = { offeringPath, toml: merged };
+      throw parsed.error;
+    }
+    offering = parsed.data;
+  } else {
+    const parsed = GpuOffering.safeParse(source);
+    if (!parsed.success) {
+      parsed.error.cause = { offeringPath, toml: source };
+      throw parsed.error;
+    }
+    offering = parsed.data;
+  }
+
+  validateAvailability(offering, regions, offeringPath);
+  return offering;
 }
 
 function validateAvailability(
@@ -246,13 +268,19 @@ function inheritableGpuMetadata(gpu: GpuMetadata) {
 }
 
 /** A value in a TOML document tree. */
-type TomlValue = string | number | boolean | Date | TomlValue[] | TomlTable;
+export type TomlValue =
+  | string
+  | number
+  | boolean
+  | Date
+  | TomlValue[]
+  | TomlTable;
 
 /**
  * A TOML table. This is the shape `base_gpu` inheritance works on: the merged
  * tree after `mergeDeep` and before `GpuOffering` parses it.
  */
-interface TomlTable {
+export interface TomlTable {
   [key: string]: TomlValue;
 }
 

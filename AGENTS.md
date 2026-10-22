@@ -5,23 +5,29 @@
 - **Build web**: `cd packages/web && bun run build` — builds the static site + JSON API into `dist/`.
 - **Dev server**: `cd packages/web && bun run dev` — runs the dev server at http://localhost:3000.
 - **Sync Azure prices**: `bun run azure:sync` — regenerates `providers/azure/` from the live Azure Retail Prices API, then run `bun validate`.
+- **Sync CoreWeave prices**: `bun run coreweave:sync` — scrapes https://www.coreweave.com/pricing and regenerates `providers/coreweave/gpus/`. It checks every file before it writes one.
 - **Lint**: `bun run lint` — oxlint with the repo's custom `anti-slop` JS plugin
   (`tools/oxlint/anti-slop/`). The plugin is TypeScript and oxlint runs it via
   `node`, so Node >= 22.18 must be on PATH (CI pins Node 22).
-- **Test**: `bun test` (single file: `bun test path/to/file.test.ts`). No test
-  files exist yet; `bun validate` and the web build are the real checks.
+- **Test**: `bun test` (single file: `bun test path/to/file.test.ts`). The only
+  tests are `packages/core/src/sync/coreweave.test.ts` (the CoreWeave page
+  parser); `bun validate` and the web build are the other checks.
 - `bun validate` prints the whole resolved catalog as JSON on success; on a
   `ZodError` it prints the errors plus `cause` (`{ path, toml }`) and exits 1.
 - `bun run build` / `bun run dev` at the root are shortcuts for the
   `packages/web` scripts.
 
-CI (`.github/workflows/validate.yml`) runs `bun run lint` and `bun validate` on
-PRs to `dev`. Pushes to `dev` deploy via `bun sst deploy --stage=dev`.
+CI (`.github/workflows/validate.yml`) runs `bun run lint`, `bun test` and
+`bun validate` on PRs to `dev`. Pushes to `dev` deploy via
+`bun sst deploy --stage=dev`.
 
 ## Automated price sync
 
-Providers with a public pricing API are populated by a sync module rather than
-hand-authored. **Azure is the reference implementation:**
+Providers with a public pricing API or a machine-readable pricing page are
+populated by a sync module rather than hand-authored. Every runner writes its
+files through `offeringToml` in `packages/core/src/sync/toml.ts`, so generated
+files share one key order and one quoting rule. **Azure is the reference
+implementation:**
 
 - Logic lives in `packages/core/src/sync/azure.ts` (fetches the no-auth Azure
   Retail Prices API and normalizes it); the runner
@@ -50,6 +56,42 @@ hand-authored. **Azure is the reference implementation:**
   non-GPU N-series (FPGA `NP`, media-accelerator `NM`) sizes, and any SKU whose
   GPU count Microsoft does not document (e.g. NCads A10 v4, RTX PRO 6000 v6
   sizes missing from the pricing-calculator feed).
+
+**CoreWeave** has no pricing API, so `packages/core/src/sync/coreweave.ts`
+scrapes https://www.coreweave.com/pricing (static HTML, one request per run)
+with `HTMLRewriter`, which both Bun and Cloudflare Workers provide. The runner
+is `packages/core/script/sync-coreweave.ts`.
+
+- The page lists GPU count, VRAM, vCPUs, RAM, local storage and the on-demand
+  and spot prices per region, so specs come from the page. The curated `SKUS`
+  table maps each row's `data-product` slug to an offering id, a `base_gpu` and
+  a `fabric` (the page does not list fabric). `REGIONS` maps the table labels
+  ("REGION: NORTH AMERICA") to the continental slugs.
+- Only the tables under the "On-demand GPU instances" heading count (the CPU
+  tables and the product modals reuse the markup), and only each row's desktop
+  cells (each row also holds mobile-layout copies). Columns are matched by
+  header text, not by position.
+- The sync stops before it writes anything on: a missing or repeated column,
+  a cell it cannot parse, an empty or paginated table, specs that differ
+  between regions, page VRAM that disagrees with `base_gpu` (set `vramGb` in
+  `SKUS` for a real variant), a North America single-GPU inference price that
+  is not on-demand ÷ GPU count (a sign of a misread GPU count), or a file that
+  fails `resolveOffering` in `generate.ts` (the check `bun validate` runs).
+- It also stops when a product in `SKUS` or a region in `REGIONS` is missing
+  from the page, so a removal is always a deliberate edit to those tables.
+  Only additions are skipped with a warning: an unmapped product, region label
+  or column. Rows hidden by Webflow conditional visibility
+  (`w-condition-invisible`) count as missing.
+- The sync owns `providers/coreweave/gpus/`: it deletes a generated file whose
+  product left `SKUS`, and it refuses to delete a file without the
+  `# AUTO-SYNCED` header. `provider.toml`, `logo.svg` and `regions/` are never
+  touched.
+- A price that every region shares is written once in `[cost]`; other prices
+  go on each `[[availability]]` entry. `last_updated` is the sync month, so a
+  file is rewritten only when a value or the month changes.
+- The curated `fabric` values come from the "GPU connectivity" row of each
+  instance page on docs.coreweave.com (append `.md` to a docs URL to get the
+  raw Markdown).
 
 ## Code Style
 - **Runtime**: Bun with TypeScript ESM modules.

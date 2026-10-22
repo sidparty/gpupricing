@@ -1,15 +1,16 @@
-# Source: https://www.coreweave.com/pricing (captured 2026-07).
-# On-demand price is identical across North America and Europe; spot differs by region.
+# AUTO-SYNCED from https://www.coreweave.com/pricing on 2026-10.
+# Product->GPU mapping and fabric are curated in packages/core/src/sync/coreweave.ts; do not edit here.
 base_gpu = "nvidia/rtx-pro-6000-blackwell"
-instance = "RTX PRO 6000 Blackwell Server Edition"
+instance = "RTX PRO 6000 Blackwell Server Edition (High Memory)"
 gpus_per_instance = 8
 vcpus = 128
 memory_gb = 1024
-local_storage_gb = 7_680
+local_storage_gb = 7680
 fabric = "Ethernet (PCIe)"
+last_updated = "2026-10"
 
 [cost]
-hourly = 20.00
+hourly = 20
 
 [[availability]]
 region = "north-america"
