@@ -5,11 +5,13 @@
 - **Build web**: `cd packages/web && bun run build` — builds the static site + JSON API into `dist/`.
 - **Dev server**: `cd packages/web && bun run dev` — runs the dev server at http://localhost:3000.
 - **Sync Azure prices**: `bun run azure:sync` — regenerates `providers/azure/` from the live Azure Retail Prices API, then run `bun validate`.
+- **Sync Runcrate prices**: `bun run runcrate:sync` — regenerates `providers/runcrate/` from the live Runcrate pricing feed, then run `bun validate`.
 - **Lint**: `bun run lint` — oxlint with the repo's custom `anti-slop` JS plugin
   (`tools/oxlint/anti-slop/`). The plugin is TypeScript and oxlint runs it via
   `node`, so Node >= 22.18 must be on PATH (CI pins Node 22).
-- **Test**: `bun test` (single file: `bun test path/to/file.test.ts`). No test
-  files exist yet; `bun validate` and the web build are the real checks.
+- **Test**: `bun test` (single file: `bun test path/to/file.test.ts`). The only
+  tests cover the Runcrate sync (`packages/core/src/sync/runcrate.test.ts`);
+  `bun validate` and the web build are the real checks.
 - `bun validate` prints the whole resolved catalog as JSON on success; on a
   `ZodError` it prints the errors plus `cause` (`{ path, toml }`) and exits 1.
 - `bun run build` / `bun run dev` at the root are shortcuts for the
@@ -50,6 +52,23 @@ hand-authored. **Azure is the reference implementation:**
   non-GPU N-series (FPGA `NP`, media-accelerator `NM`) sizes, and any SKU whose
   GPU count Microsoft does not document (e.g. NCads A10 v4, RTX PRO 6000 v6
   sizes missing from the pricing-calculator feed).
+
+**Runcrate** follows the same shape, with a public JSON feed instead of a price API:
+
+- Logic lives in `packages/core/src/sync/runcrate.ts`; the runner
+  `packages/core/script/sync-runcrate.ts` regenerates
+  `providers/runcrate/gpus/*.toml` (marked `# AUTO-SYNCED`) from
+  https://www.runcrate.ai/api/gpu-pricing (no key) and creates any missing
+  `provider.toml`, `logo.svg` and `regions/<slug>`.
+- The feed gives one starting on-demand price per GPU-hour for each GPU type and
+  the locations that type is sold in, but no per-location prices and no form
+  factor. So the offering stores that price once under `[cost]`, and two tables
+  are curated: feed `gpu_type` -> canonical `gpus/` entry (`GPU_MAP`) and feed
+  location -> region slug (`RUNCRATE_REGIONS`). Prices are never stored in code.
+- Types with `available_options` below 1 are skipped (the feed keeps the last
+  price of an out-of-stock type). H100 and A100 are not mapped because the feed
+  does not say SXM or PCIe. To add a GPU, add its canonical `gpus/` entry, then
+  one line to `GPU_MAP`.
 
 ## Code Style
 - **Runtime**: Bun with TypeScript ESM modules.
